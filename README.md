@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🔒 Security Camera Placement AI
 
-## Getting Started
+Upload a photo of any room and let AI figure out the best spots to mount your CCTV cameras — then **see a photorealistic preview** of your actual room with the camera installed.
 
-First, run the development server:
+Built as a demo for a security-equipment store: it bridges the gap between *"where should I put cameras?"* and *"what will it look like?"* so customers can decide before they buy.
 
+---
+
+## ✨ What it does
+
+1. **Upload a room photo** — drag & drop or click to browse.
+2. **Find Best Camera Spots** — AI vision analyzes the room and drops **3 suggested positions** (numbered pins) right on your photo, each with a reason ("covers the entrance", "no blind spots", etc.).
+3. **Pick & fine-tune** — tap a pin to select it, then **drag it** to nudge the exact spot you want.
+4. **Generate** — AI renders a new version of *your* room with a realistic dome camera mounted at that location.
+5. **Compare** — original vs. generated, side by side. Try other positions without re-uploading.
+
+---
+
+## 🛠️ Tech stack
+
+| Layer | What |
+|-------|------|
+| Framework | [Next.js 16](https://nextjs.org) (App Router) + React 19 |
+| Styling | Tailwind CSS 4 |
+| AI gateway | [OpenRouter](https://openrouter.ai) (one key, many models) |
+| Room analysis | `google/gemini-3.5-flash` (vision → camera positions as JSON) |
+| Image generation | `google/gemini-2.5-flash-image` ("Nano Banana" — edits your real photo) |
+
+---
+
+## 🚀 Getting started
+
+### 1. Prerequisites
+- [Node.js](https://nodejs.org) 18+ installed
+- An [OpenRouter API key](https://openrouter.ai/settings/keys) with some credit (image generation costs a few cents per render)
+
+### 2. Install
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <your-repo-url>
+cd security-demo
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Add your API key
+Create a file called **`.env.local`** in the project root:
+```
+OPENROUTER_API_KEY=sk-or-v1-your-key-here
+```
+> `.env.local` is gitignored — your key never gets committed.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Run
+```bash
+npm run dev
+```
+Open **[http://localhost:3000](http://localhost:3000)**, upload a room photo, and hit **Find Best Camera Spots**.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 📖 How to use (step by step)
 
-To learn more about Next.js, take a look at the following resources:
+1. **Drop in a photo** of the room you want to secure.
+2. Click **Find Best Camera Spots** — wait a couple seconds for the AI to drop 3 pins.
+3. **Tap a pin** → a panel explains why that spot is good.
+4. (Optional) **Drag the pin** to the exact spot you'd actually mount the camera.
+5. Click **Place Camera at Position X** → the AI generates your room with the camera installed.
+6. Review the **side-by-side** result. Hit **← Try another position** to test a different pin, or **Open full image ↗** to view/save it.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 💡 Notes & tips
 
-## Deploy on Vercel
+- **Costs:** room analysis is fractions of a cent; each generated image is a few cents. Keep an eye on your OpenRouter balance.
+- **Best photos:** well-lit, shows the ceiling line and corners — the AI places cameras near the ceiling.
+- **One camera at a time:** the generator is tuned to add a single, realistic dome camera so the room stays recognizable.
+- **No restart needed** after editing routes — Next.js hot-reloads. (Only restart if you change `.env.local`.)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📂 Project structure
+
+```
+app/
+├── page.tsx              # Full UI: upload, pins, drag, results
+├── api/
+│   ├── analyze/route.ts  # Vision → 3 camera positions (JSON)
+│   └── generate/route.ts # Renders the room with a camera placed
+```
+
+---
+
+*Demo project — built to prove the AI placement concept before building a full security-equipment storefront around it.*
