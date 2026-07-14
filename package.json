@@ -10,6 +10,7 @@
     "db:migrate": "dotenv -e .env.local -e .env -- prisma migrate dev",
     "db:seed": "dotenv -e .env.local -e .env -- prisma db seed",
     "db:studio": "dotenv -e .env.local -e .env -- prisma studio",
+    "db:ping": "dotenv -e .env.local -e .env -- node scripts/db-ping.mjs",
     "test": "vitest run"
   },
   "prisma": {
