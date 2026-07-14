@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/product-card";
 import { CategoryIcon } from "@/components/category-icon";
-import { BENEFITS, CATEGORIES, bestSellers } from "@/lib/products";
+import { BENEFITS, CATEGORIES } from "@/lib/products";
+import { bestSellers } from "@/lib/queries";
 
-export default function HomePage() {
-  const best = bestSellers(4);
+export default async function HomePage() {
+  const best = await bestSellers(4);
 
   return (
     <div className="animate-sv-fade">

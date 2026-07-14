@@ -18,7 +18,7 @@ export function ProductCard({ product }: { product: DecoratedProduct }) {
     >
       <div className="sv-hatch relative flex aspect-square items-center justify-center">
         <span className="rounded-md bg-white px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
-          {product.img}
+          {product.en}
         </span>
       </div>
 

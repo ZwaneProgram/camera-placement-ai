@@ -38,7 +38,7 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
         <div>
           <div className="sv-hatch relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[20px] border border-line shadow-[0_12px_30px_rgba(14,27,42,.08)]">
             <span className="rounded-lg bg-white px-3 py-1.5 font-mono text-[13px] text-muted-foreground">
-              {product.img} — product shot
+              {product.en} — product shot
             </span>
             {product.ai && (
               <Badge

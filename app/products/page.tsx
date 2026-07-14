@@ -1,5 +1,6 @@
 import { ListingView } from "@/components/listing/listing-view";
 import { FILTERS, type FilterKey } from "@/lib/products";
+import { getAllProducts, typeCounts } from "@/lib/queries";
 
 export default async function ProductsPage({
   searchParams,
@@ -10,5 +11,16 @@ export default async function ProductsPage({
   const valid = FILTERS.some((f) => f.k === cat);
   const initialFilter = (valid ? cat : "all") as FilterKey;
 
-  return <ListingView initialFilter={initialFilter} />;
+  const [products, counts] = await Promise.all([
+    getAllProducts(),
+    typeCounts(),
+  ]);
+
+  return (
+    <ListingView
+      initialFilter={initialFilter}
+      products={products}
+      counts={counts}
+    />
+  );
 }

@@ -14,10 +14,9 @@ import {
 } from "@/components/ui/select";
 import {
   CATEGORY_META,
-  DECORATED,
   FILTERS,
   sortProducts,
-  typeCounts,
+  type DecoratedProduct,
   type FilterKey,
   type SortKey,
 } from "@/lib/products";
@@ -29,7 +28,15 @@ const PRICE_MIN = 0;
 const PRICE_MAX = 6000;
 const PRICE_STEP = 100;
 
-export function ListingView({ initialFilter }: { initialFilter: FilterKey }) {
+export function ListingView({
+  initialFilter,
+  products: initialProducts,
+  counts,
+}: {
+  initialFilter: FilterKey;
+  products: DecoratedProduct[];
+  counts: Record<string, number>;
+}) {
   const [filter, setFilter] = React.useState<FilterKey>(initialFilter);
   const [sort, setSort] = React.useState<SortKey>("popular");
   const [price, setPrice] = React.useState<[number, number]>([
@@ -39,18 +46,17 @@ export function ListingView({ initialFilter }: { initialFilter: FilterKey }) {
 
   React.useEffect(() => setFilter(initialFilter), [initialFilter]);
 
-  const counts = React.useMemo(() => typeCounts(), []);
   const meta = CATEGORY_META[filter] ?? CATEGORY_META.all;
 
   const products = React.useMemo(() => {
-    const base = DECORATED.filter(
+    const base = initialProducts.filter(
       (p) =>
         (filter === "all" || p.type === filter) &&
         p.price >= price[0] &&
         p.price <= price[1]
     );
     return sortProducts(base, sort);
-  }, [filter, sort, price]);
+  }, [filter, sort, price, initialProducts]);
 
   return (
     <div className="animate-sv-fade">
