@@ -9,6 +9,8 @@ import { CategoryIcon } from "@/components/category-icon";
 import { BENEFITS, CATEGORIES } from "@/lib/products";
 import { bestSellers } from "@/lib/queries";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const best = await bestSellers(4);
 
