@@ -1,8 +1,37 @@
+import type { Product as DbProduct } from "@prisma/client";
 import { formatBaht } from "@/lib/utils";
 
 export type ProductType = "cctv" | "sensor" | "alarm" | "lock" | "nvr";
 
-export interface Product {
+export const PRODUCT_TYPES: ProductType[] = [
+  "cctv",
+  "sensor",
+  "alarm",
+  "lock",
+  "nvr",
+];
+
+/** Thai label for each product type (was previously stored per-row as typeLabel). */
+export const TYPE_LABEL: Record<ProductType, string> = {
+  cctv: "กล้องวงจรปิด",
+  sensor: "เซ็นเซอร์",
+  alarm: "สัญญาณกันขโมย",
+  lock: "สมาร์ทล็อค",
+  nvr: "ชุด NVR",
+};
+
+/** Row shape consumed by the UI. `oldPrice`/`imageUrl` may be null in the DB. */
+export type Product = DbProduct;
+
+const TAG_MAP: Record<ProductType, string[]> = {
+  cctv: ["", "อินฟราเรดกลางคืน", "ดูผ่านมือถือ"],
+  sensor: ["ไร้สาย", "แจ้งเตือนทันที"],
+  alarm: ["เสียง 120dB", "ติดตั้งง่าย"],
+  lock: ["สแกนลายนิ้วมือ", "ปลดล็อกผ่านแอป"],
+  nvr: ["บันทึก 24 ชม.", "HDD 2TB"],
+};
+
+export interface DecoratedProduct {
   id: number;
   name: string;
   en: string;
@@ -15,30 +44,7 @@ export interface Product {
   rating: number;
   reviews: number;
   ai: boolean;
-  img: string;
-}
-
-/** Source of truth for the demo catalogue (mirrors the SUCCESS IT design). */
-export const PRODUCTS: Product[] = [
-  { id: 1, name: "กล้องโดม SUCCESS IT 4MP", en: "Dome Camera 4MP", type: "cctv", typeLabel: "กล้องวงจรปิด", brand: "SUCCESS IT", res: "4MP", price: 1290, old: 1690, rating: 4.8, reviews: 212, ai: true, img: "Dome Camera" },
-  { id: 2, name: "กล้อง Bullet กันน้ำ 5MP", en: "Bullet Outdoor 5MP", type: "cctv", typeLabel: "กล้องวงจรปิด", brand: "HikPro", res: "5MP", price: 1890, old: 2290, rating: 4.7, reviews: 158, ai: true, img: "Bullet Camera" },
-  { id: 3, name: "กล้อง PTZ หมุน 360° 8MP", en: "PTZ 360° 8MP", type: "cctv", typeLabel: "กล้องวงจรปิด", brand: "SUCCESS IT", res: "8MP", price: 4590, old: 5290, rating: 4.9, reviews: 97, ai: true, img: "PTZ Camera" },
-  { id: 4, name: "เซ็นเซอร์ประตู-หน้าต่างไร้สาย", en: "Door/Window Sensor", type: "sensor", typeLabel: "เซ็นเซอร์", brand: "AjaxLite", res: "-", price: 390, old: 490, rating: 4.6, reviews: 340, ai: false, img: "Door Sensor" },
-  { id: 5, name: "เซ็นเซอร์ตรวจจับการเคลื่อนไหว PIR", en: "PIR Motion Sensor", type: "sensor", typeLabel: "เซ็นเซอร์", brand: "AjaxLite", res: "-", price: 590, old: 790, rating: 4.7, reviews: 221, ai: true, img: "PIR Sensor" },
-  { id: 6, name: "ไซเรนสัญญาณกันขโมย 120dB", en: "Alarm Siren 120dB", type: "alarm", typeLabel: "สัญญาณกันขโมย", brand: "SUCCESS IT", res: "-", price: 890, old: 1090, rating: 4.5, reviews: 88, ai: false, img: "Alarm Siren" },
-  { id: 7, name: "สมาร์ทล็อคลายนิ้วมือ", en: "Smart Fingerprint Lock", type: "lock", typeLabel: "สมาร์ทล็อค", brand: "LockOne", res: "-", price: 3290, old: 3990, rating: 4.8, reviews: 134, ai: false, img: "Smart Lock" },
-  { id: 8, name: "ชุด NVR 8 ช่อง + HDD 2TB", en: "NVR Kit 8CH", type: "nvr", typeLabel: "ชุด NVR", brand: "SUCCESS IT", res: "8CH", price: 5990, old: 6990, rating: 4.9, reviews: 76, ai: true, img: "NVR Kit" },
-];
-
-const TAG_MAP: Record<ProductType, string[]> = {
-  cctv: ["", "อินฟราเรดกลางคืน", "ดูผ่านมือถือ"],
-  sensor: ["ไร้สาย", "แจ้งเตือนทันที"],
-  alarm: ["เสียง 120dB", "ติดตั้งง่าย"],
-  lock: ["สแกนลายนิ้วมือ", "ปลดล็อกผ่านแอป"],
-  nvr: ["บันทึก 24 ชม.", "HDD 2TB"],
-};
-
-export interface DecoratedProduct extends Product {
+  imageUrl: string | null;
   priceLabel: string;
   oldPriceLabel: string;
   discount: number;
@@ -48,33 +54,36 @@ export interface DecoratedProduct extends Product {
 }
 
 export function decorate(p: Product): DecoratedProduct {
-  const tags = (TAG_MAP[p.type] ?? [])
-    .map((t, i) => (i === 0 && p.type === "cctv" ? p.res : t))
+  const type = p.type as ProductType;
+  const old = p.oldPrice ?? p.price;
+  const tags = (TAG_MAP[type] ?? [])
+    .map((t, i) => (i === 0 && type === "cctv" ? p.res : t))
     .filter(Boolean)
     .slice(0, 3);
   return {
-    ...p,
+    id: p.id,
+    name: p.name,
+    en: p.en,
+    type,
+    typeLabel: TYPE_LABEL[type] ?? p.type,
+    brand: p.brand,
+    res: p.res,
+    price: p.price,
+    old,
+    rating: p.rating,
+    reviews: p.reviews,
+    ai: p.ai,
+    imageUrl: p.imageUrl,
     priceLabel: formatBaht(p.price),
-    oldPriceLabel: formatBaht(p.old),
-    discount: Math.round((1 - p.price / p.old) * 100),
+    oldPriceLabel: formatBaht(old),
+    discount: old > p.price ? Math.round((1 - p.price / old) * 100) : 0,
     ratingLabel: p.rating.toFixed(1),
     reviewsLabel: `(${p.reviews})`,
     tags,
   };
 }
 
-export const DECORATED = PRODUCTS.map(decorate);
-
-export function getProduct(id: number): DecoratedProduct | undefined {
-  const p = PRODUCTS.find((x) => x.id === id);
-  return p ? decorate(p) : undefined;
-}
-
-export function bestSellers(n = 4): DecoratedProduct[] {
-  return [...PRODUCTS].sort((a, b) => b.rating - a.rating).slice(0, n).map(decorate);
-}
-
-export function productHighlights(p: Product): string[] {
+export function productHighlights(p: DecoratedProduct): string[] {
   return [
     `ความละเอียด ${p.res !== "-" ? p.res : "สูง"} ภาพคมชัด`,
     "มองเห็นกลางคืน (Night Vision)",
@@ -130,12 +139,6 @@ export const CATEGORY_META: Record<FilterKey, { title: string; sub: string }> = 
   lock: { title: "สมาร์ทล็อค", sub: "ล็อกอัจฉริยะ ปลดล็อกด้วยลายนิ้วมือและแอปพลิเคชัน" },
   nvr: { title: "ชุด NVR", sub: "ชุดบันทึกภาพครบชุด พร้อมฮาร์ดดิสก์และการติดตั้ง" },
 };
-
-export function typeCounts(): Record<string, number> {
-  const counts: Record<string, number> = { all: PRODUCTS.length };
-  for (const p of PRODUCTS) counts[p.type] = (counts[p.type] ?? 0) + 1;
-  return counts;
-}
 
 export type SortKey = "popular" | "low" | "high" | "rating";
 
