@@ -79,7 +79,6 @@ export function SiteFooter() {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-[1240px] flex-wrap justify-between gap-2.5 px-5 py-[18px] text-[13px] text-white/45">
           <span>© 2026 SUCCESS IT CENTER · สงวนลิขสิทธิ์</span>
-          <span>รับประกันสินค้าแท้ · ติดตั้งฟรี · ส่งฟรีทั่วไทย</span>
         </div>
       </div>
     </footer>
