@@ -18,6 +18,8 @@
 - Secrets go in git-ignored env files. **Prisma reads `.env`** (DB URLs there); Next runtime reads `.env.local` (auth/blob/admin there). Verify both are git-ignored before writing secrets.
 - Each task ends with `npx next build` passing (or the task's test) before commit. Commit messages end with the Co-Authored-By trailer.
 - `ProductType` union = `"cctv" | "sensor" | "alarm" | "lock" | "nvr"`. `type` is validated against this in server actions.
+- **Next 16 facts (verified in bundled docs, deviate from older training data):** route protection uses **`proxy.ts`** (renamed from `middleware.ts`), export named `proxy`, **Node runtime only** (no edge) — so the auth edge/node split is a nicety, not a hard constraint. `next lint` is removed (scripts already use `eslint`). `images.domains` is deprecated → use `images.remotePatterns` (plan already does). `images.qualities` now defaults to `[75]` and `minimumCacheTTL` to 4h — fine for uploaded product photos. `revalidateTag` now needs a 2nd `cacheLife` arg, but the plan uses `revalidatePath` (unaffected); consider `updateTag`/`refresh` for read-your-writes if ever needed.
+- **Prisma 6 pinned, not 7** (v7 is a breaking rewrite: driver adapters, `prisma.config.ts`, generated-client output path). DB is Neon: pooled `DATABASE_URL` at runtime, direct `DIRECT_URL` for migrations. Both live in `.env.local`; Prisma CLI is wrapped with `dotenv-cli` in the `db:*` scripts. **Watch-item:** if runtime queries throw `prepared statement "sN" does not exist` over the Neon pooler, append `&pgbouncer=true` to `DATABASE_URL` (Neon's PgBouncer runs in transaction mode).
 
 ---
 
@@ -31,7 +33,7 @@
 - `auth.config.ts` — edge-safe NextAuth config (callbacks, pages, `authorized`).
 - `auth.ts` — node NextAuth instance (adapter, Credentials provider, bcrypt).
 - `next-auth.d.ts` — session/JWT type augmentation.
-- `middleware.ts` — route protection for `/admin/*`.
+- `proxy.ts` — route protection for `/admin/*` (Next 16 renamed `middleware.ts` → `proxy.ts`, Node runtime).
 - `app/api/auth/[...nextauth]/route.ts` — auth handlers.
 - `lib/auth-actions.ts` — `registerUser` server action.
 - `app/(auth)/login/page.tsx`, `app/(auth)/register/page.tsx` — auth pages.
@@ -841,11 +843,13 @@ git add auth.ts
 git commit -m "feat(auth): add node auth instance with credentials provider"
 ```
 
-### Task 12: Auth route handler + middleware
+### Task 12: Auth route handler + proxy (Next 16 — NOT middleware)
+
+> **Next 16 change (verified in `node_modules/next/dist/docs/.../version-16.md`):** `middleware.ts` is renamed to **`proxy.ts`**, the exported function is `proxy` (not `middleware`), and **`proxy` runs on the Node.js runtime — the edge runtime is NOT supported and cannot be configured.** This means the original "edge/node split to keep bcrypt/Prisma out of the edge bundle" rationale no longer applies — proxy is Node, so it could run Prisma/bcrypt. We still keep the lightweight `auth.config.ts` (empty providers + `authorized` callback) for the proxy so we don't pull the Prisma adapter into the proxy needlessly, but there is no hard edge constraint anymore. Per the Next 16 auth guide, proxy is for **optimistic checks only** — real authorization stays server-side (the admin layout + server actions re-check the role).
 
 **Files:**
 - Create: `app/api/auth/[...nextauth]/route.ts`
-- Create: `middleware.ts`
+- Create: `proxy.ts` (project root — NOT `middleware.ts`)
 
 - [ ] **Step 1: Route handler**
 
@@ -855,13 +859,14 @@ import { handlers } from "@/auth";
 export const { GET, POST } = handlers;
 ```
 
-- [ ] **Step 2: Middleware (edge — uses the config-only instance)**
+- [ ] **Step 2: Proxy (Node runtime — uses the config-only instance)**
 
 ```ts
 import NextAuth from "next-auth";
 import authConfig from "./auth.config";
 
-export const { auth: middleware } = NextAuth(authConfig);
+// Next 16: the export MUST be named `proxy` (or default). Runs on Node runtime.
+export const { auth: proxy } = NextAuth(authConfig);
 
 export const config = {
   // Guard everything except static assets & the auth API.
@@ -869,18 +874,18 @@ export const config = {
 };
 ```
 
-Note: the `authorized` callback only restricts `/admin/*`; all other matched routes return `true`, so public pages stay open. Middleware imports `auth.config` ONLY — never `auth.ts` — so bcrypt/Prisma never enter the edge bundle.
+Note: the `authorized` callback only restricts `/admin/*`; all other matched routes return `true`, so public pages stay open. This is an optimistic redirect only — the admin layout (Task 18) and the admin server actions (Task 16) independently re-check `session.user.role === "ADMIN"` server-side, which is the actual authorization boundary.
 
 - [ ] **Step 3: Build check**
 
 Run: `npx next build`
-Expected: builds clean; no "module not found" or edge-runtime errors about bcrypt/Prisma.
+Expected: builds clean. If Next warns about a deprecated `middleware` convention, confirm the file is named `proxy.ts` and the export is `proxy`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add "app/api/auth/[...nextauth]/route.ts" middleware.ts
-git commit -m "feat(auth): add auth route handler and admin-guard middleware"
+git add "app/api/auth/[...nextauth]/route.ts" proxy.ts
+git commit -m "feat(auth): add auth route handler and admin-guard proxy"
 ```
 
 ### Task 13: Register server action + SessionProvider
