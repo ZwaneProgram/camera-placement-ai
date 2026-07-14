@@ -1,327 +1,191 @@
-"use client";
+import Link from "next/link";
+import Image from "next/image";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 
-import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ProductCard } from "@/components/product-card";
+import { CategoryIcon } from "@/components/category-icon";
+import { BENEFITS, CATEGORIES, bestSellers } from "@/lib/products";
 
-type Placement = {
-  x: number;
-  y: number;
-  position: string;
-  reason: string;
-};
-
-const COLORS = ["#2563eb", "#16a34a", "#dc2626"];
-
-export default function Home() {
-  const [preview, setPreview] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-
-  const [analyzing, setAnalyzing] = useState(false);
-  const [placements, setPlacements] = useState<Placement[] | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [dragging, setDragging] = useState<number | null>(null);
-  const photoRef = useRef<HTMLDivElement>(null);
-
-  const [generating, setGenerating] = useState(false);
-  const [genStatus, setGenStatus] = useState("");
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-
-  const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Drag a pin: update its x/y based on pointer position within the photo box
-  useEffect(() => {
-    if (dragging === null) return;
-
-    function move(clientX: number, clientY: number) {
-      const el = photoRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const x = Math.round(Math.max(2, Math.min(98, ((clientX - rect.left) / rect.width) * 100)));
-      const y = Math.round(Math.max(2, Math.min(98, ((clientY - rect.top) / rect.height) * 100)));
-      setPlacements((prev) => prev?.map((p, i) => (i === dragging ? { ...p, x, y } : p)) ?? null);
-    }
-
-    const onMouse = (e: MouseEvent) => move(e.clientX, e.clientY);
-    const onTouch = (e: TouchEvent) => {
-      if (e.touches[0]) { e.preventDefault(); move(e.touches[0].clientX, e.touches[0].clientY); }
-    };
-    const end = () => setDragging(null);
-
-    window.addEventListener("mousemove", onMouse);
-    window.addEventListener("mouseup", end);
-    window.addEventListener("touchmove", onTouch, { passive: false });
-    window.addEventListener("touchend", end);
-    return () => {
-      window.removeEventListener("mousemove", onMouse);
-      window.removeEventListener("mouseup", end);
-      window.removeEventListener("touchmove", onTouch);
-      window.removeEventListener("touchend", end);
-    };
-  }, [dragging]);
-
-  function handleFile(f: File) {
-    setFile(f);
-    setPlacements(null);
-    setSelected(null);
-    setGeneratedImage(null);
-    setError(null);
-    const reader = new FileReader();
-    reader.onload = (e) => setPreview(e.target?.result as string);
-    reader.readAsDataURL(f);
-  }
-
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault();
-    const f = e.dataTransfer.files[0];
-    if (f && f.type.startsWith("image/")) handleFile(f);
-  }
-
-  async function analyze() {
-    if (!file) return;
-    setAnalyzing(true);
-    setError(null);
-    setPlacements(null);
-    setSelected(null);
-    setGeneratedImage(null);
-
-    try {
-      const form = new FormData();
-      form.append("image", file);
-      const res = await fetch("/api/analyze", { method: "POST", body: form });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setPlacements(data.placements);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Analysis failed");
-    } finally {
-      setAnalyzing(false);
-    }
-  }
-
-  async function generate() {
-    if (!file || selected === null || !placements) return;
-    setGenerating(true);
-    setGenStatus("Adding camera to your room...");
-    setError(null);
-    setGeneratedImage(null);
-
-    try {
-      const form = new FormData();
-      form.append("image", file);
-      form.append("selectedPosition", placements[selected].position);
-
-      const res = await fetch("/api/generate", { method: "POST", body: form });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setGeneratedImage(data.generatedImage);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Generation failed");
-    } finally {
-      setGenerating(false);
-      setGenStatus("");
-    }
-  }
-
-  const showPins = placements && !generating && !generatedImage;
+export default function HomePage() {
+  const best = bestSellers(4);
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
-      <div className="max-w-5xl mx-auto px-4 py-12">
+    <div className="animate-sv-fade">
+      {/* ================= HERO ================= */}
+      <section className="relative overflow-hidden bg-[radial-gradient(120%_130%_at_78%_-10%,#b8f0e6_0%,#cfeaf7_34%,#e4f0f7_60%,#dbe7f0_100%)]">
+        <div className="sv-dots absolute inset-0 opacity-85" />
+        <div className="absolute top-1/2 left-1/2 h-[44%] max-h-[340px] w-[80%] max-w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(94,231,211,.28),rgba(47,107,255,.12)_52%,transparent_74%)] blur-[26px]" />
 
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Security Camera Placement AI</h1>
-          <p className="text-gray-400 text-sm">Upload a room photo → pick a spot → AI places the camera</p>
-        </div>
+        <div className="relative mx-auto max-w-[1240px] px-5 pt-6 pb-11">
+          <div className="mb-3.5 h-px bg-line" />
 
-        {/* Upload / pin zone */}
-        <div
-          className="border-2 border-dashed border-gray-700 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 transition-colors mb-6"
-          onDrop={onDrop}
-          onDragOver={(e) => e.preventDefault()}
-          onClick={() => !placements && inputRef.current?.click()}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-          />
+          {/* Stage */}
+          <div className="relative flex flex-col items-center gap-6 lg:block lg:min-h-[640px]">
+            {/* Big title */}
+            <h1 className="text-center text-[clamp(52px,15vw,200px)] leading-[.92] font-bold tracking-[-.05em] text-ink lg:absolute lg:top-3 lg:right-0 lg:left-0 lg:z-[1]">
+              <span className="text-brand-blue">SUCCESS</span> IT
+            </h1>
 
-          {preview ? (
-            <div
-              ref={photoRef}
-              className="relative inline-block max-w-full select-none align-top"
-              style={{ cursor: dragging !== null ? "grabbing" : "default" }}
-            >
-              <img
-                src={preview}
-                alt="Room"
-                draggable={false}
-                className="block max-h-80 w-auto max-w-full rounded-lg pointer-events-none"
+            {/* Big word behind the camera */}
+            <div className="pointer-events-none absolute top-[42%] left-1/2 z-0 -translate-x-1/2 -translate-y-1/2 select-none lg:top-[58%]">
+              <span className="text-[clamp(64px,18vw,240px)] leading-none font-black tracking-[-.04em] text-ink/[.14]">
+                CENTER
+              </span>
+            </div>
+
+            {/* Camera visual */}
+            <div className="relative z-[2] lg:absolute lg:top-[150px] lg:left-1/2 lg:-translate-x-1/2 lg:-rotate-4">
+              <Image
+                src="/high-end-security-camera.png"
+                alt="SUCCESS IT Bullet Camera"
+                width={1500}
+                height={1125}
+                priority
+                className="h-auto w-[min(600px,90vw)] drop-shadow-[0_30px_40px_rgba(14,27,42,.28)]"
               />
+            </div>
 
-              {showPins && placements.map((p, i) => (
-                <button
-                  key={i}
-                  onClick={(e) => { e.stopPropagation(); setSelected(i); }}
-                  onMouseDown={(e) => { e.stopPropagation(); setSelected(i); setDragging(i); }}
-                  onTouchStart={(e) => { e.stopPropagation(); setSelected(i); setDragging(i); }}
-                  style={{
-                    left: `${p.x}%`,
-                    top: `${p.y}%`,
-                    background: COLORS[i],
-                    boxShadow: selected === i
-                      ? `0 0 0 3px white, 0 0 0 6px ${COLORS[i]}`
-                      : "0 2px 10px rgba(0,0,0,0.7)",
-                    transform: `translate(-50%, -50%) scale(${selected === i ? 1.15 : 1})`,
-                    cursor: dragging === i ? "grabbing" : "grab",
-                  }}
-                  className="absolute w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold transition-shadow z-10 touch-none"
-                  title={p.position}
+            {/* Copy (left) */}
+            <div className="max-w-[248px] text-center lg:absolute lg:top-[52%] lg:left-0 lg:z-[3] lg:text-left">
+              <p className="text-[15px] leading-relaxed text-muted-foreground">
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do
+                eiusmod tempor incididunt ut labore.
+              </p>
+            </div>
+
+            {/* Floating product card (right) */}
+            <div className="w-[212px] rounded-2xl border border-white/70 bg-white/85 p-[15px] shadow-[0_22px_46px_rgba(14,27,42,.18)] backdrop-blur-md lg:absolute lg:top-[30%] lg:right-0 lg:z-[3] lg:rotate-4">
+              <div className="mb-3 flex items-center justify-between">
+                <Badge variant="teal">ขายดี</Badge>
+                <span className="tracking-widest text-muted-foreground">⋯</span>
+              </div>
+              <div className="mb-0.5 font-mono text-[11px] text-brand-blue">
+                SUCCESS IT
+              </div>
+              <div className="mb-2 text-[15px] leading-snug font-bold text-ink">
+                กล้อง Bullet กันน้ำ 5MP
+              </div>
+              <div className="flex items-baseline justify-between">
+                <div className="text-xl font-bold text-ink">฿1,890</div>
+                <Link
+                  href="/products/2"
+                  className="flex size-[34px] items-center justify-center rounded-[10px] bg-ink text-white"
                 >
-                  {i + 1}
-                </button>
-              ))}
-
-              {showPins && selected !== null && dragging === null && (
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1 rounded-full pointer-events-none">
-                  Drag pin {selected + 1} to fine-tune
-                </div>
-              )}
-
-              <button
-                onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
-                className="absolute top-2 right-2 bg-gray-900/70 hover:bg-gray-900 text-gray-300 text-xs px-2 py-1 rounded-lg z-20"
-              >
-                Change photo
-              </button>
+                  <ArrowRight className="size-4" />
+                </Link>
+              </div>
             </div>
-          ) : (
-            <div className="text-gray-500 py-4">
-              <div className="text-4xl mb-3">📷</div>
-              <p className="text-sm">Drag & drop your room photo here, or click to browse</p>
-            </div>
-          )}
-        </div>
 
-        {/* Pin detail */}
-        {showPins && selected !== null && (
-          <div
-            className="rounded-xl p-4 mb-4 text-sm border transition-all"
-            style={{ background: `${COLORS[selected]}18`, borderColor: `${COLORS[selected]}55` }}
-          >
-            <p className="font-semibold text-white mb-1">
-              Position {selected + 1} — {placements[selected].position}
-            </p>
-            <p className="text-gray-300">{placements[selected].reason}</p>
+            {/* CTAs */}
+            <div className="flex flex-wrap justify-center gap-3 lg:absolute lg:bottom-2 lg:left-1/2 lg:z-[4] lg:-translate-x-1/2">
+              <Button asChild variant="gradient" size="pill">
+                <Link href="/products/1#ai-simulator">ทดลอง AI วางกล้อง</Link>
+              </Button>
+              <Button asChild variant="outline" size="pill">
+                <Link href="/products">เลือกซื้อสินค้า</Link>
+              </Button>
+            </div>
           </div>
-        )}
+        </div>
+      </section>
 
-        {placements && !generatedImage && (
-          <p className="text-center text-gray-500 text-xs mb-4">
-            {selected === null
-              ? "Tap a numbered pin to choose where to mount the camera"
-              : `Position ${selected + 1} selected — hit Generate`}
-          </p>
-        )}
-
-        {/* Buttons */}
-        <div className="flex gap-3 mb-8">
-          {file && !placements && (
-            <button
-              onClick={analyze}
-              disabled={analyzing}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-900 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors"
+      {/* ================= CATEGORIES ================= */}
+      <section className="mx-auto max-w-[1240px] px-5 pt-14 pb-5">
+        <div className="mb-6">
+          <div className="mb-1.5 text-[13px] font-semibold tracking-wide text-brand-blue">
+            CATEGORIES
+          </div>
+          <h2 className="text-[clamp(24px,3vw,32px)] font-bold tracking-tight">
+            หมวดหมู่สินค้า
+          </h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
+          {CATEGORIES.map((cat) => (
+            <Link
+              key={cat.key}
+              href={`/products?cat=${cat.key}`}
+              className="rounded-2xl border border-line bg-secondary p-5 transition-all duration-200 hover:-translate-y-1 hover:border-brand-teal hover:shadow-[0_14px_30px_rgba(14,27,42,.09)]"
             >
-              {analyzing
-                ? <span className="flex items-center justify-center gap-2"><span className="animate-spin">⟳</span> Finding best spots...</span>
-                : "Find Best Camera Spots"}
-            </button>
-          )}
-
-          {placements && !generatedImage && (
-            <>
-              <button
-                onClick={analyze}
-                disabled={analyzing}
-                className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white font-semibold py-3 px-5 rounded-xl transition-colors text-sm"
-              >
-                Re-analyze
-              </button>
-              <button
-                onClick={generate}
-                disabled={generating || selected === null}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-900 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors"
-              >
-                {generating
-                  ? <span className="flex items-center justify-center gap-2"><span className="animate-spin">⟳</span>{genStatus || "Generating..."}</span>
-                  : selected === null ? "Select a pin first" : `Place Camera at Position ${selected + 1}`}
-              </button>
-            </>
-          )}
+              <CategoryIcon
+                icon={cat.icon}
+                gradient={cat.gradient}
+                className="mb-3.5"
+              />
+              <div className="text-base font-bold">{cat.th}</div>
+              <div className="font-mono text-xs text-muted-foreground">
+                {cat.en}
+              </div>
+            </Link>
+          ))}
         </div>
+      </section>
 
-        {error && (
-          <div className="bg-red-900/40 border border-red-700 rounded-xl p-4 mb-6 text-red-300 text-sm">
-            ⚠ {error}
+      {/* ================= BEST SELLERS ================= */}
+      <section className="mx-auto max-w-[1240px] px-5 pt-11 pb-5">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="mb-1.5 text-[13px] font-semibold tracking-wide text-brand-blue">
+              SUGGESTION
+            </div>
+            <h2 className="text-[clamp(24px,3vw,32px)] font-bold tracking-tight">
+              สินค้าแนะนำ
+            </h2>
           </div>
-        )}
+          <Button asChild variant="soft">
+            <Link href="/products">
+              ดูทั้งหมด <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {best.map((p) => (
+            <ProductCard key={p.id} product={p} />
+          ))}
+        </div>
+      </section>
 
-        {/* Result */}
-        {generatedImage && placements && selected !== null && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* ================= BENEFITS ================= */}
+      <section className="mx-auto max-w-[1240px] px-5 py-12">
+        <div className="grid grid-cols-1 gap-5 rounded-[22px] border border-line bg-secondary p-7 shadow-[0_10px_30px_rgba(14,27,42,.06)] sm:grid-cols-2 lg:grid-cols-4">
+          {BENEFITS.map((b) => (
+            <div key={b.title} className="flex items-start gap-3.5">
+              <span className="flex size-[42px] shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#5EE7D3,#2F6BFF)]">
+                <ShieldCheck className="size-5 text-white" />
+              </span>
               <div>
-                <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">
-                  Original — Position {selected + 1} selected
-                </p>
-                <div className="relative inline-block max-w-full align-top">
-                  <img src={preview!} alt="Original" className="block w-full h-auto rounded-xl" />
-                  <div
-                    style={{
-                      left: `${placements[selected].x}%`,
-                      top: `${placements[selected].y}%`,
-                      background: COLORS[selected],
-                      boxShadow: `0 0 0 3px white, 0 0 0 6px ${COLORS[selected]}`,
-                    }}
-                    className="absolute w-9 h-9 -translate-x-1/2 -translate-y-1/2 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                  >
-                    {selected + 1}
-                  </div>
+                <div className="mb-1 text-[15px] font-bold">{b.title}</div>
+                <div className="text-[13px] leading-relaxed text-muted-foreground">
+                  {b.desc}
                 </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">AI Generated — With Camera</p>
-                <img src={generatedImage} alt="Generated" className="block w-full rounded-xl object-cover" />
-              </div>
             </div>
+          ))}
+        </div>
+      </section>
 
-            <div className="bg-gray-900 rounded-xl p-5">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Why this spot?</p>
-              <p className="text-white text-sm font-medium">{placements[selected].position}</p>
-              <p className="text-gray-400 text-xs mt-1">{placements[selected].reason}</p>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setGeneratedImage(null)}
-                className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-200 py-3 rounded-xl text-sm font-medium transition-colors"
-              >
-                ← Try another position
-              </button>
-              <a
-                href={generatedImage}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 text-center bg-gray-800 hover:bg-gray-700 text-gray-200 py-3 rounded-xl text-sm font-medium transition-colors"
-              >
-                Open full image ↗
-              </a>
-            </div>
+      {/* ================= CTA BANNER ================= */}
+      <section className="mx-auto max-w-[1240px] px-5 pb-16">
+        <div className="relative flex flex-wrap items-center justify-between gap-6 overflow-hidden rounded-[22px] bg-[linear-gradient(120deg,#2F6BFF,#5EE7D3)] px-8 py-11">
+          <div className="sv-dots-light absolute inset-0 opacity-50" />
+          <div className="relative max-w-[560px] text-white">
+            <h2 className="mb-2.5 text-[clamp(24px,3.4vw,34px)] font-bold tracking-tight">
+              Lorem ipsum dolor sit amet
+            </h2>
+            <p className="text-base leading-relaxed opacity-95">
+              Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua,
+              ut enim ad minim veniam quis nostrud exercitation ullamco laboris.
+            </p>
           </div>
-        )}
-      </div>
-    </main>
+          <Button
+            asChild
+            className="relative h-[52px] rounded-2xl bg-white px-7 text-base text-ink shadow-[0_12px_30px_rgba(14,27,42,.22)] hover:bg-white"
+          >
+            <Link href="/products">เลือกซื้อเลย</Link>
+          </Button>
+        </div>
+      </section>
+    </div>
   );
 }

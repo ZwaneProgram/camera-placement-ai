@@ -1,26 +1,205 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
+@custom-variant dark (&:is(.dark *));
+
+/*
+  SUCCESS IT design tokens
+  ink       #0E1B2A   blue #2F6BFF   teal #5EE7D3
+  muted     #5A6B7B   surface #F5F9FB  border #E3EDF2
+  LINE      #06C755   Facebook #1877F2 error #e5484d
+*/
 :root {
+  --radius: 0.9rem;
+
+  /* Brand palette (raw) */
+  --ink: #0e1b2a;
+  --brand-blue: #2f6bff;
+  --brand-blue-hover: #2456d6;
+  --brand-teal: #5ee7d3;
+  --muted-ink: #5a6b7b;
+  --surface: #f5f9fb;
+  --line: #e3edf2;
+  --line-soft: #eef3ff;
+  --success-line: #06c755;
+  --facebook: #1877f2;
+
+  /* shadcn semantic tokens mapped to the palette */
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0e1b2a;
+  --card: #ffffff;
+  --card-foreground: #0e1b2a;
+  --popover: #ffffff;
+  --popover-foreground: #0e1b2a;
+  --primary: #0e1b2a;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f9fb;
+  --secondary-foreground: #0e1b2a;
+  --muted: #f5f9fb;
+  --muted-foreground: #5a6b7b;
+  --accent: #eef3ff;
+  --accent-foreground: #2f6bff;
+  --destructive: #e5484d;
+  --border: #e3edf2;
+  --input: #e3edf2;
+  --ring: #2f6bff;
+}
+
+.dark {
+  --background: #0e1b2a;
+  --foreground: #f5f9fb;
+  --card: #12233a;
+  --card-foreground: #f5f9fb;
+  --popover: #12233a;
+  --popover-foreground: #f5f9fb;
+  --primary: #ffffff;
+  --primary-foreground: #0e1b2a;
+  --secondary: #17304d;
+  --secondary-foreground: #f5f9fb;
+  --muted: #17304d;
+  --muted-foreground: #9db3c7;
+  --accent: #17304d;
+  --accent-foreground: #5ee7d3;
+  --destructive: #ff6369;
+  --border: rgba(255, 255, 255, 0.12);
+  --input: rgba(255, 255, 255, 0.16);
+  --ring: #5ee7d3;
 }
 
 @theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Brand tokens as Tailwind utilities: bg-ink, text-brand-blue, etc. */
+  --color-ink: var(--ink);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-teal: var(--brand-teal);
+  --color-muted-ink: var(--muted-ink);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-success-line: var(--success-line);
+  --color-facebook: var(--facebook);
+
+  --font-sans: var(--font-space-grotesk), var(--font-plex-thai), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-thai: var(--font-plex-thai), var(--font-space-grotesk), sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Design keyframes */
+  --animate-sv-fade: sv-fade 0.4s ease;
+  --animate-sv-spin: sv-spin 0.9s linear infinite;
+  --animate-sv-ping: sv-ping 2s infinite;
+  --animate-sv-pulse: sv-pulse 1.6s ease-in-out infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes sv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes sv-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes sv-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sv-ping {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(94, 231, 211, 0.6);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 14px rgba(94, 231, 211, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(94, 231, 211, 0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--brand-teal);
+    color: var(--ink);
+  }
+  /* Dotted patterns used across hero sections */
+  .sv-dots {
+    background-image: radial-gradient(
+      rgba(47, 107, 255, 0.13) 1.3px,
+      transparent 1.3px
+    );
+    background-size: 24px 24px;
+  }
+  .sv-dots-light {
+    background-image: radial-gradient(
+      rgba(255, 255, 255, 0.2) 1.2px,
+      transparent 1.2px
+    );
+    background-size: 20px 20px;
+  }
+  .sv-dots-teal {
+    background-image: radial-gradient(
+      rgba(94, 231, 211, 0.15) 1.3px,
+      transparent 1.3px
+    );
+    background-size: 24px 24px;
+  }
+  /* Diagonal placeholder hatch for product/image slots */
+  .sv-hatch {
+    background: repeating-linear-gradient(
+      45deg,
+      #f2f7f9,
+      #f2f7f9 11px,
+      #e8f0f3 11px,
+      #e8f0f3 22px
+    );
+  }
 }
