@@ -72,3 +72,27 @@ export async function mergeGuestCart(lines: CartLine[]): Promise<CartLine[]> {
   );
   return readCart(uid);
 }
+
+/** Detailed cart items with product name and price joined in. */
+export type DetailedCartItem = {
+  id: number;
+  name: string;
+  price: number;
+  qty: number;
+};
+
+export async function getCartDetailed(): Promise<DetailedCartItem[]> {
+  const uid = await userId();
+  if (!uid) return [];
+  const rows = await prisma.cartItem.findMany({
+    where: { userId: uid },
+    orderBy: { productId: "asc" },
+    include: { product: true },
+  });
+  return rows.map((r) => ({
+    id: r.productId,
+    name: r.product.name,
+    price: r.product.price,
+    qty: r.qty,
+  }));
+}
