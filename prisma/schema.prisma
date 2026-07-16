@@ -26,6 +26,7 @@ model Product {
   reviews   Int        @default(0)
   ai        Boolean    @default(false)
   imageUrl  String?
+  images    String[]   @default([])
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   cartItems CartItem[]

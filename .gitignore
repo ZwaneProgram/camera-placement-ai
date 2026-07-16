@@ -47,3 +47,20 @@ skills-lock.json
 
 # subagent-driven-development scratch
 .superpowers/
+
+# playwright / browser tooling
+/test-results/
+/playwright-report/
+/playwright/.cache/
+.playwright-mcp/
+
+# os junk
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# editor
+.vscode/
+.idea/
+*.swp
+*~

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, ShoppingCart } from "lucide-react";
 
+import { CONTACT } from "@/lib/contact";
+
 import { useSession, signOut } from "next-auth/react";
 
 import { Logo } from "@/components/brand";
@@ -147,13 +149,17 @@ export function SiteHeader() {
 
           <div className="mt-1.5 flex gap-2">
             <a
-              href="#"
+              href={CONTACT.facebookUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex h-11 flex-1 items-center justify-center rounded-[10px] border border-line bg-secondary font-bold text-brand-blue"
             >
               Facebook
             </a>
             <a
-              href="#"
+              href={CONTACT.lineUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex h-11 flex-1 items-center justify-center rounded-[10px] bg-success-line font-semibold text-white"
             >
               LINE

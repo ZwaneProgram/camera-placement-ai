@@ -23,8 +23,6 @@ type ParsedProduct = {
   res: string;
   price: number;
   oldPrice: number | null;
-  rating: number;
-  reviews: number;
   ai: boolean;
 };
 
@@ -37,8 +35,6 @@ function parseProductForm(formData: FormData): ParsedProduct | { error: string }
   const price = Number(formData.get("price"));
   const oldRaw = String(formData.get("oldPrice") ?? "").trim();
   const oldPrice = oldRaw === "" ? null : Number(oldRaw);
-  const rating = Number(formData.get("rating") ?? 0);
-  const reviews = Number(formData.get("reviews") ?? 0);
   const ai = formData.get("ai") === "on";
 
   if (!name || !en || !brand) return { error: "กรุณากรอกข้อมูลให้ครบ" };
@@ -47,7 +43,7 @@ function parseProductForm(formData: FormData): ParsedProduct | { error: string }
   if (oldPrice !== null && (!Number.isFinite(oldPrice) || oldPrice < 0))
     return { error: "ราคาเดิมไม่ถูกต้อง" };
 
-  return { name, en, type, brand, res, price, oldPrice, rating, reviews, ai };
+  return { name, en, type, brand, res, price, oldPrice, ai };
 }
 
 function revalidateStorefront(id?: number) {
@@ -64,12 +60,22 @@ export async function createProduct(
   const parsed = parseProductForm(formData);
   if ("error" in parsed) return parsed;
 
-  const image = formData.get("image");
-  let imageUrl: string | null = null;
-  if (image instanceof File && image.size > 0) {
-    imageUrl = await uploadProductImage(image);
+  const files = formData
+    .getAll("images")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+
+  let urls: string[] = [];
+  if (files.length > 0) {
+    try {
+      urls = await Promise.all(files.map(uploadProductImage));
+    } catch {
+      return { error: "อัปโหลดรูปภาพไม่สำเร็จ" };
+    }
   }
-  const created = await prisma.product.create({ data: { ...parsed, imageUrl } });
+  const imageUrl = urls[0] ?? null;
+  const created = await prisma.product.create({
+    data: { ...parsed, imageUrl, images: urls },
+  });
   revalidateStorefront(created.id);
   redirect("/admin");
 }
@@ -85,13 +91,37 @@ export async function updateProduct(
   const existing = await prisma.product.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบสินค้า" };
 
-  const image = formData.get("image");
-  let imageUrl = existing.imageUrl;
-  if (image instanceof File && image.size > 0) {
-    imageUrl = await uploadProductImage(image);
-    if (existing.imageUrl) await deleteProductImage(existing.imageUrl);
+  const newFiles = formData
+    .getAll("images")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+
+  let images: string[] = existing.images;
+  let imageUrl: string | null = existing.imageUrl;
+
+  if (newFiles.length > 0) {
+    let urls: string[];
+    try {
+      urls = await Promise.all(newFiles.map(uploadProductImage));
+    } catch {
+      return { error: "อัปโหลดรูปภาพไม่สำเร็จ" };
+    }
+    // Delete all old blobs that are not in the new set
+    const newSet = new Set(urls);
+    const toDelete = new Set([
+      ...existing.images,
+      ...(existing.imageUrl ? [existing.imageUrl] : []),
+    ]);
+    for (const url of toDelete) {
+      if (!newSet.has(url)) await deleteProductImage(url);
+    }
+    images = urls;
+    imageUrl = urls[0] ?? null;
   }
-  await prisma.product.update({ where: { id }, data: { ...parsed, imageUrl } });
+
+  await prisma.product.update({
+    where: { id },
+    data: { ...parsed, imageUrl, images },
+  });
   revalidateStorefront(id);
   redirect("/admin");
 }
@@ -100,6 +130,12 @@ export async function deleteProduct(id: number): Promise<void> {
   await requireAdmin();
   const existing = await prisma.product.findUnique({ where: { id } });
   await prisma.product.delete({ where: { id } });
-  if (existing?.imageUrl) await deleteProductImage(existing.imageUrl);
+  if (existing) {
+    const toDelete = new Set([
+      ...existing.images,
+      ...(existing.imageUrl ? [existing.imageUrl] : []),
+    ]);
+    for (const url of toDelete) await deleteProductImage(url);
+  }
   revalidateStorefront(id);
 }

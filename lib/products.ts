@@ -45,6 +45,7 @@ export interface DecoratedProduct {
   reviews: number;
   ai: boolean;
   imageUrl: string | null;
+  images: string[];
   priceLabel: string;
   oldPriceLabel: string;
   discount: number;
@@ -74,6 +75,7 @@ export function decorate(p: Product): DecoratedProduct {
     reviews: p.reviews,
     ai: p.ai,
     imageUrl: p.imageUrl,
+    images: p.images,
     priceLabel: formatBaht(p.price),
     oldPriceLabel: formatBaht(old),
     discount: old > p.price ? Math.round((1 - p.price / old) * 100) : 0,
@@ -84,24 +86,77 @@ export function decorate(p: Product): DecoratedProduct {
 }
 
 export function productHighlights(p: DecoratedProduct): string[] {
-  return [
-    `ความละเอียด ${p.res !== "-" ? p.res : "สูง"} ภาพคมชัด`,
-    "มองเห็นกลางคืน (Night Vision)",
-    "เชื่อมต่อดูผ่านมือถือได้ทุกที่",
-  ];
+  switch (p.type) {
+    case "cctv":
+      return [
+        `ความละเอียด ${p.res !== "-" ? p.res : "สูง"} ภาพคมชัด`,
+        "มองเห็นกลางคืน (Night Vision) ชัดแม้ในที่มืด",
+        "ดูสด/ย้อนหลังผ่านมือถือได้ทุกที่ทั่วโลก",
+        "แจ้งเตือนทันทีเมื่อตรวจจับความเคลื่อนไหว",
+      ];
+    case "sensor":
+      return [
+        "เชื่อมต่อไร้สาย ติดตั้งเองได้ง่ายไม่ต้องเจาะผนัง",
+        "แบตเตอรี่ใช้งานยาวนาน ไม่ต้องชาร์จบ่อย",
+        "แจ้งเตือนทันทีเมื่อตรวจพบการเคลื่อนไหว",
+        "ทนทานทุกสภาพอากาศ เหมาะทั้งในและนอกอาคาร",
+      ];
+    case "alarm":
+      return [
+        "เสียงไซเรนดังสูง ขับไล่ผู้บุกรุกได้ทันที",
+        "กันงัดแงะ (Tamper-proof) แตะปลอก-แจ้งเตือนทันที",
+        "สั่งเปิด/ปิดระบบผ่านแอปได้จากทุกที่",
+        "สำรองไฟในตัว ทำงานต่อเนื่องแม้ไฟดับ",
+      ];
+    case "lock":
+      return [
+        "ปลดล็อกด้วยลายนิ้วมือ รหัส หรือแอปมือถือ",
+        "ล็อกอัตโนมัติเมื่อประตูปิด ไม่ต้องกังวลลืมล็อก",
+        "สร้างรหัสชั่วคราวให้แขกหรือช่างได้สะดวก",
+        "แจ้งเตือนการเข้า-ออกทุกครั้งผ่านแอป",
+      ];
+    case "nvr":
+      return [
+        "บันทึกภาพต่อเนื่อง 24 ชั่วโมง ไม่มีช่องว่าง",
+        `รองรับหลายกล้องพร้อมกัน ครอบคลุมทุกมุม`,
+        "ดูย้อนหลังจากมือถือได้ทุกที่ทุกเวลา",
+        "พื้นที่จัดเก็บขนาดใหญ่ รองรับการบันทึกระยะยาว",
+      ];
+  }
 }
 
-export const PRODUCT_DESC =
-  "กล้องและอุปกรณ์รักษาความปลอดภัยคุณภาพสูง ออกแบบสำหรับบ้านและธุรกิจในประเทศไทย ทนทานต่อสภาพอากาศ ติดตั้งง่าย รองรับการดูภาพสดผ่านแอปพลิเคชันบนมือถือ พร้อมระบบแจ้งเตือนอัจฉริยะและการรับประกันศูนย์ไทย";
+export function productDesc(p: DecoratedProduct): string {
+  switch (p.type) {
+    case "cctv":
+      return `${p.brand} ${p.name} กล้องวงจรปิดความละเอียดสูง ออกแบบสำหรับบ้านและธุรกิจในประเทศไทย มองเห็นกลางคืนได้ชัดเจน รองรับดูสดและย้อนหลังผ่านแอปบนมือถือ พร้อมระบบแจ้งเตือนเมื่อตรวจจับความเคลื่อนไหว รับประกันศูนย์ไทย`;
+    case "sensor":
+      return `${p.brand} ${p.name} เซ็นเซอร์ตรวจจับไร้สายคุณภาพสูง ติดตั้งง่ายไม่ต้องเดินสาย แจ้งเตือนทันทีผ่านแอปเมื่อตรวจพบความเคลื่อนไหวหรือการบุกรุก เหมาะสำหรับบ้านพักอาศัยและสถานประกอบการ`;
+    case "alarm":
+      return `${p.brand} ${p.name} ระบบสัญญาณกันขโมยเสียงดังสูง ป้องกันการบุกรุกด้วยไซเรนอัตโนมัติ สั่งการผ่านแอปมือถือ พร้อมระบบสำรองไฟเพื่อให้ทำงานได้แม้ในยามไฟดับ`;
+    case "lock":
+      return `${p.brand} ${p.name} สมาร์ทล็อคอัจฉริยะสำหรับการควบคุมการเข้าออก รองรับลายนิ้วมือ รหัส และแอปมือถือ ล็อกอัตโนมัติและแจ้งเตือนทุกครั้งที่มีการเปิดประตู เหมาะสำหรับบ้านพักและสำนักงาน`;
+    case "nvr":
+      return `${p.brand} ${p.name} ชุดบันทึกภาพ NVR ครบวงจร รองรับการบันทึกต่อเนื่อง 24 ชั่วโมงจากหลายกล้องพร้อมกัน พื้นที่จัดเก็บขนาดใหญ่และดูย้อนหลังผ่านมือถือได้ทุกที่ เหมาะสำหรับบ้าน ออฟฟิศ และห้างร้าน`;
+  }
+}
 
-export function productSpecs(p: DecoratedProduct) {
-  return [
+export function productSpecs(p: DecoratedProduct): { k: string; v: string }[] {
+  const rows: { k: string; v: string }[] = [
     { k: "ยี่ห้อ", v: p.brand },
     { k: "ประเภท", v: p.typeLabel },
-    { k: "ความละเอียด", v: p.res },
-    { k: "การรับประกัน", v: "2 ปี (ศูนย์ไทย)" },
-    { k: "การติดตั้ง", v: "ฟรีในเขต กทม." },
   ];
+
+  if ((p.type === "cctv" || p.type === "nvr") && p.res !== "-") {
+    rows.push({ k: "ความละเอียด", v: p.res });
+  }
+
+  rows.push({ k: "การรับประกัน", v: "2 ปี (ศูนย์ไทย)" });
+
+  if (p.type === "cctv" || p.type === "nvr" || p.type === "alarm") {
+    rows.push({ k: "การติดตั้ง", v: "ฟรีในเขต กทม." });
+  }
+
+  return rows;
 }
 
 export interface CategoryDef {
@@ -153,14 +208,9 @@ export function sortProducts(list: DecoratedProduct[], sort: SortKey): Decorated
 }
 
 export const BENEFITS = [
-  { title: "Lorem ipsum", desc: "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do." },
-  { title: "Dolor sit amet", desc: "Sed do eiusmod tempor incididunt ut labore et dolore magna." },
-  { title: "Consectetur elit", desc: "Ut enim ad minim veniam, quis nostrud exercitation ullamco." },
-  { title: "Adipiscing tempor", desc: "Duis aute irure dolor in reprehenderit in voluptate velit esse." },
+  { title: "ติดตั้งฟรีในเขต กทม.", desc: "เมื่อซื้อครบ ฿2,000 ทีมช่างมืออาชีพติดตั้งให้ถึงที่ ไม่มีค่าใช้จ่ายเพิ่ม" },
+  { title: "รับประกันศูนย์ไทย 2 ปี", desc: "สินค้าแท้ผ่านศูนย์ไทยทุกชิ้น พร้อมบริการหลังการขายที่คุณวางใจได้" },
+  { title: "AI ช่วยวางกล้องก่อนซื้อ", desc: "อัปโหลดรูปห้องหรือพื้นที่ แล้วให้ AI จำลองจุดติดตั้งที่ครอบคลุมที่สุด" },
+  { title: "จัดส่งฟรีทั่วไทย", desc: "ส่งเร็ว ปลอดภัย ติดตามพัสดุได้ทุกขั้นตอนจนถึงมือคุณ" },
 ];
 
-export const PLACEMENT_NOTES = [
-  { num: 1, color: "#2F6BFF", text: "มุมเพดานด้านขวาบน ครอบคลุมประตูทางเข้าและพื้นที่นั่งเล่นได้กว้างที่สุด" },
-  { num: 2, color: "#5EE7D3", text: "ติดสูงจากพื้นประมาณ 2.4 เมตร หลีกเลี่ยงแสงย้อนจากหน้าต่าง" },
-  { num: 3, color: "#2F6BFF", text: "มุมมองภาพชัดเจนในระยะ ~8 เมตร เหมาะกับเลนส์ 2.8 มม. ของรุ่นนี้" },
-];
