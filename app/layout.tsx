@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { MobileBottomBar } from "@/components/mobile-bottom-bar";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthSessionProvider } from "@/components/session-provider";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -38,14 +39,16 @@ export default function RootLayout({
       className={`${spaceGrotesk.variable} ${plexThai.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
-        <CartProvider>
-          <SiteHeader />
-          <main className="flex-1 pb-[82px] md:pb-0">{children}</main>
-          <SiteFooter />
-          <MobileBottomBar />
-          <CartDrawer />
-          <Toaster />
-        </CartProvider>
+        <AuthSessionProvider>
+          <CartProvider>
+            <SiteHeader />
+            <main className="flex-1 pb-[82px] md:pb-0">{children}</main>
+            <SiteFooter />
+            <MobileBottomBar />
+            <CartDrawer />
+            <Toaster />
+          </CartProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   );

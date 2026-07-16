@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
+import Image from "next/image";
 
 import { useCart } from "@/components/cart/cart-provider";
 import { Badge } from "@/components/ui/badge";
@@ -17,9 +18,19 @@ export function ProductCard({ product }: { product: DecoratedProduct }) {
       className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-[0_6px_20px_rgba(14,27,42,.06)] transition-all duration-200 hover:-translate-y-1 hover:border-brand-teal hover:shadow-[0_18px_40px_rgba(14,27,42,.14)]"
     >
       <div className="sv-hatch relative flex aspect-square items-center justify-center">
-        <span className="rounded-md bg-white px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
-          {product.img}
-        </span>
+        {product.imageUrl ? (
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            fill
+            sizes="(max-width: 768px) 50vw, 25vw"
+            className="object-cover"
+          />
+        ) : (
+          <span className="rounded-md bg-white px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
+            {product.en}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col px-[15px] pt-3.5 pb-4">

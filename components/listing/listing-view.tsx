@@ -14,33 +14,49 @@ import {
 } from "@/components/ui/select";
 import {
   CATEGORY_META,
-  DECORATED,
   FILTERS,
   sortProducts,
-  typeCounts,
+  type DecoratedProduct,
   type FilterKey,
   type SortKey,
 } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
-const PRICE_BANDS = ["ต่ำกว่า ฿1,000", "฿1,000 – ฿3,000", "มากกว่า ฿3,000"];
 const RESOLUTIONS = ["4MP", "5MP", "8MP"];
 
-export function ListingView({ initialFilter }: { initialFilter: FilterKey }) {
+const PRICE_MIN = 0;
+const PRICE_MAX = 6000;
+const PRICE_STEP = 100;
+
+export function ListingView({
+  initialFilter,
+  products: initialProducts,
+  counts,
+}: {
+  initialFilter: FilterKey;
+  products: DecoratedProduct[];
+  counts: Record<string, number>;
+}) {
   const [filter, setFilter] = React.useState<FilterKey>(initialFilter);
   const [sort, setSort] = React.useState<SortKey>("popular");
+  const [price, setPrice] = React.useState<[number, number]>([
+    PRICE_MIN,
+    PRICE_MAX,
+  ]);
 
   React.useEffect(() => setFilter(initialFilter), [initialFilter]);
 
-  const counts = React.useMemo(() => typeCounts(), []);
   const meta = CATEGORY_META[filter] ?? CATEGORY_META.all;
 
   const products = React.useMemo(() => {
-    const base = DECORATED.filter(
-      (p) => filter === "all" || p.type === filter
+    const base = initialProducts.filter(
+      (p) =>
+        (filter === "all" || p.type === filter) &&
+        p.price >= price[0] &&
+        p.price <= price[1]
     );
     return sortProducts(base, sort);
-  }, [filter, sort]);
+  }, [filter, sort, price, initialProducts]);
 
   return (
     <div className="animate-sv-fade">
@@ -114,16 +130,11 @@ export function ListingView({ initialFilter }: { initialFilter: FilterKey }) {
               ))}
             </div>
 
-            <div className="mb-5 flex flex-col gap-2">
-              {PRICE_BANDS.map((band) => (
-                <label
-                  key={band}
-                  className="flex items-center gap-2.5 text-sm text-ink"
-                >
-                  <span className="size-[18px] rounded-[5px] border-2 border-line" />
-                  {band}
-                </label>
-              ))}
+            <div className="mb-2.5 text-[13px] font-semibold text-muted-foreground">
+              ช่วงราคา
+            </div>
+            <div className="mb-5">
+              <PriceRange value={price} onChange={setPrice} />
             </div>
 
             <div className="mb-2.5 text-[13px] font-semibold text-muted-foreground">
@@ -183,6 +194,119 @@ export function ListingView({ initialFilter }: { initialFilter: FilterKey }) {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PriceField({
+  value,
+  onChange,
+  onCommit,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onCommit: () => void;
+}) {
+  return (
+    <div className="flex flex-1 items-center rounded-[9px] border-[1.5px] border-line bg-white px-2 focus-within:border-brand-teal">
+      <span className="text-[13px] text-muted-foreground">฿</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ""))}
+        onBlur={onCommit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+        className="w-full bg-transparent py-1.5 pl-1 text-[13px] font-semibold text-ink outline-none"
+        aria-label="ราคา"
+      />
+    </div>
+  );
+}
+
+function PriceRange({
+  value,
+  onChange,
+}: {
+  value: [number, number];
+  onChange: (v: [number, number]) => void;
+}) {
+  const [min, max] = value;
+  const pct = (n: number) =>
+    ((n - PRICE_MIN) / (PRICE_MAX - PRICE_MIN)) * 100;
+
+  // Draft strings let the user clear/type freely; commit (clamp) on blur/Enter.
+  const [draftMin, setDraftMin] = React.useState<string>(String(min));
+  const [draftMax, setDraftMax] = React.useState<string>(String(max));
+
+  React.useEffect(() => setDraftMin(String(min)), [min]);
+  React.useEffect(() => setDraftMax(String(max)), [max]);
+
+  const clamp = (n: number) =>
+    Math.min(PRICE_MAX, Math.max(PRICE_MIN, Math.round(n / PRICE_STEP) * PRICE_STEP));
+
+  const commitMin = () => {
+    const n = clamp(Number(draftMin) || PRICE_MIN);
+    onChange([Math.min(n, max - PRICE_STEP), max]);
+  };
+  const commitMax = () => {
+    const n = clamp(Number(draftMax) || PRICE_MAX);
+    onChange([min, Math.max(n, min + PRICE_STEP)]);
+  };
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2">
+        <PriceField
+          value={draftMin}
+          onChange={setDraftMin}
+          onCommit={commitMin}
+        />
+        <span className="text-muted-foreground">–</span>
+        <PriceField
+          value={draftMax}
+          onChange={setDraftMax}
+          onCommit={commitMax}
+        />
+      </div>
+
+      <div className="relative h-5">
+        {/* track */}
+        <div className="absolute top-1/2 h-1.5 w-full -translate-y-1/2 rounded-full bg-line" />
+        {/* selected range */}
+        <div
+          className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-brand-teal"
+          style={{ left: `${pct(min)}%`, right: `${100 - pct(max)}%` }}
+        />
+        {/* min handle */}
+        <input
+          type="range"
+          min={PRICE_MIN}
+          max={PRICE_MAX}
+          step={PRICE_STEP}
+          value={min}
+          onChange={(e) =>
+            onChange([Math.min(Number(e.target.value), max - PRICE_STEP), max])
+          }
+          className="sv-range absolute top-0 h-5 w-full"
+          aria-label="ราคาต่ำสุด"
+        />
+        {/* max handle */}
+        <input
+          type="range"
+          min={PRICE_MIN}
+          max={PRICE_MAX}
+          step={PRICE_STEP}
+          value={max}
+          onChange={(e) =>
+            onChange([min, Math.max(Number(e.target.value), min + PRICE_STEP)])
+          }
+          className="sv-range absolute top-0 h-5 w-full"
+          aria-label="ราคาสูงสุด"
+        />
       </div>
     </div>
   );

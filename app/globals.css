@@ -192,6 +192,42 @@
     );
     background-size: 24px 24px;
   }
+  /* Dual-thumb price range slider */
+  .sv-range {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    pointer-events: none; /* let the track/fill below show; only thumbs catch input */
+    margin: 0;
+  }
+  .sv-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    pointer-events: auto;
+    height: 18px;
+    width: 18px;
+    border-radius: 999px;
+    background: #fff;
+    border: 3px solid var(--brand-teal, #5ee7d3);
+    box-shadow: 0 2px 6px rgba(14, 27, 42, 0.25);
+    cursor: grab;
+  }
+  .sv-range::-webkit-slider-thumb:active {
+    cursor: grabbing;
+  }
+  .sv-range::-moz-range-thumb {
+    pointer-events: auto;
+    height: 18px;
+    width: 18px;
+    border-radius: 999px;
+    background: #fff;
+    border: 3px solid var(--brand-teal, #5ee7d3);
+    box-shadow: 0 2px 6px rgba(14, 27, 42, 0.25);
+    cursor: grab;
+  }
+  .sv-range::-moz-range-track {
+    background: transparent;
+  }
   /* Diagonal placeholder hatch for product/image slots */
   .sv-hatch {
     background: repeating-linear-gradient(

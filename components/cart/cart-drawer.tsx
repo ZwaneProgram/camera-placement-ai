@@ -95,9 +95,6 @@ export function CartDrawer() {
               <Button variant="gradient" size="lg" className="w-full">
                 สั่งซื้อสินค้า
               </Button>
-              <div className="mt-2.5 text-center text-xs text-muted-foreground">
-                รับประกันสินค้าแท้ · ติดตั้งฟรีในเขตกรุงเทพฯ
-              </div>
             </div>
           </>
         ) : (
