@@ -1,6 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export async function registerUser(
@@ -17,8 +18,18 @@ export async function registerUser(
   if (existing) return { error: "อีเมลนี้ถูกใช้งานแล้ว" };
 
   const passwordHash = await bcrypt.hash(password, 10);
-  await prisma.user.create({
-    data: { email, passwordHash, name, role: "USER" },
-  });
+  try {
+    await prisma.user.create({
+      data: { email, passwordHash, name, role: "USER" },
+    });
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      return { error: "อีเมลนี้ถูกใช้งานแล้ว" };
+    }
+    throw err;
+  }
   return {};
 }
