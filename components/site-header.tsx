@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, ShoppingCart } from "lucide-react";
 
+import { useSession, signOut } from "next-auth/react";
+
 import { Logo } from "@/components/brand";
 import { useCart } from "@/components/cart/cart-provider";
 import { cn } from "@/lib/utils";
@@ -25,6 +27,8 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { count, toggle } = useCart();
   const [navOpen, setNavOpen] = React.useState(false);
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
 
   React.useEffect(() => {
     setNavOpen(false);
@@ -58,6 +62,26 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex-1" />
+
+        {session?.user ? (
+          <div className="hidden items-center gap-2 md:flex">
+            {isAdmin && (
+              <Link href="/admin" className="flex h-10 items-center rounded-xl px-3 text-sm font-semibold text-brand-blue hover:bg-line-soft">
+                แอดมิน
+              </Link>
+            )}
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="flex h-10 items-center rounded-xl px-3 text-sm font-semibold text-ink hover:bg-secondary"
+            >
+              ออกจากระบบ
+            </button>
+          </div>
+        ) : (
+          <Link href="/login" className="hidden h-10 items-center rounded-xl px-3 text-sm font-semibold text-ink hover:bg-secondary md:flex">
+            เข้าสู่ระบบ
+          </Link>
+        )}
 
         <button
           onClick={toggle}
@@ -95,6 +119,32 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          {session?.user ? (
+            <>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="rounded-[10px] p-3 text-left text-base font-semibold text-brand-blue"
+                >
+                  แอดมิน
+                </Link>
+              )}
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="rounded-[10px] p-3 text-left text-base font-semibold text-ink"
+              >
+                ออกจากระบบ
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              className="rounded-[10px] p-3 text-left text-base font-semibold text-ink"
+            >
+              เข้าสู่ระบบ
+            </Link>
+          )}
+
           <div className="mt-1.5 flex gap-2">
             <a
               href="#"
