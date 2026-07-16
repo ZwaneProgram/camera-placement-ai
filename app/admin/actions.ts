@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { uploadProductImage, deleteProductImage } from "@/lib/blob";
 import { prisma } from "@/lib/prisma";
 import { PRODUCT_TYPES, type ProductType } from "@/lib/products";
 
@@ -63,7 +64,12 @@ export async function createProduct(
   const parsed = parseProductForm(formData);
   if ("error" in parsed) return parsed;
 
-  const created = await prisma.product.create({ data: parsed });
+  const image = formData.get("image");
+  let imageUrl: string | null = null;
+  if (image instanceof File && image.size > 0) {
+    imageUrl = await uploadProductImage(image);
+  }
+  const created = await prisma.product.create({ data: { ...parsed, imageUrl } });
   revalidateStorefront(created.id);
   redirect("/admin");
 }
@@ -76,13 +82,24 @@ export async function updateProduct(
   const parsed = parseProductForm(formData);
   if ("error" in parsed) return parsed;
 
-  await prisma.product.update({ where: { id }, data: parsed });
+  const existing = await prisma.product.findUnique({ where: { id } });
+  if (!existing) return { error: "ไม่พบสินค้า" };
+
+  const image = formData.get("image");
+  let imageUrl = existing.imageUrl;
+  if (image instanceof File && image.size > 0) {
+    imageUrl = await uploadProductImage(image);
+    if (existing.imageUrl) await deleteProductImage(existing.imageUrl);
+  }
+  await prisma.product.update({ where: { id }, data: { ...parsed, imageUrl } });
   revalidateStorefront(id);
   redirect("/admin");
 }
 
 export async function deleteProduct(id: number): Promise<void> {
   await requireAdmin();
+  const existing = await prisma.product.findUnique({ where: { id } });
   await prisma.product.delete({ where: { id } });
+  if (existing?.imageUrl) await deleteProductImage(existing.imageUrl);
   revalidateStorefront(id);
 }
