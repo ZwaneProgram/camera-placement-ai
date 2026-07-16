@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Minus, Plus, Check, Sparkles } from "lucide-react";
 
 import { useCart } from "@/components/cart/cart-provider";
@@ -37,9 +38,19 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
         {/* Gallery */}
         <div>
           <div className="sv-hatch relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[20px] border border-line shadow-[0_12px_30px_rgba(14,27,42,.08)]">
-            <span className="rounded-lg bg-white px-3 py-1.5 font-mono text-[13px] text-muted-foreground">
-              {product.en} — product shot
-            </span>
+            {product.imageUrl ? (
+              <Image
+                src={product.imageUrl}
+                alt={product.name}
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
+              />
+            ) : (
+              <span className="rounded-lg bg-white px-3 py-1.5 font-mono text-[13px] text-muted-foreground">
+                {product.en} — product shot
+              </span>
+            )}
             {product.ai && (
               <Badge
                 variant="teal"
