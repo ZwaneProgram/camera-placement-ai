@@ -1,0 +1,88 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import { PRODUCT_TYPES, type ProductType } from "@/lib/products";
+
+async function requireAdmin() {
+  const session = await auth();
+  if (session?.user?.role !== "ADMIN") {
+    throw new Error("ไม่ได้รับอนุญาต");
+  }
+}
+
+type ParsedProduct = {
+  name: string;
+  en: string;
+  type: ProductType;
+  brand: string;
+  res: string;
+  price: number;
+  oldPrice: number | null;
+  rating: number;
+  reviews: number;
+  ai: boolean;
+};
+
+function parseProductForm(formData: FormData): ParsedProduct | { error: string } {
+  const name = String(formData.get("name") ?? "").trim();
+  const en = String(formData.get("en") ?? "").trim();
+  const type = String(formData.get("type") ?? "") as ProductType;
+  const brand = String(formData.get("brand") ?? "").trim();
+  const res = String(formData.get("res") ?? "-").trim() || "-";
+  const price = Number(formData.get("price"));
+  const oldRaw = String(formData.get("oldPrice") ?? "").trim();
+  const oldPrice = oldRaw === "" ? null : Number(oldRaw);
+  const rating = Number(formData.get("rating") ?? 0);
+  const reviews = Number(formData.get("reviews") ?? 0);
+  const ai = formData.get("ai") === "on";
+
+  if (!name || !en || !brand) return { error: "กรุณากรอกข้อมูลให้ครบ" };
+  if (!PRODUCT_TYPES.includes(type)) return { error: "ประเภทสินค้าไม่ถูกต้อง" };
+  if (!Number.isFinite(price) || price < 0) return { error: "ราคาไม่ถูกต้อง" };
+  if (oldPrice !== null && (!Number.isFinite(oldPrice) || oldPrice < 0))
+    return { error: "ราคาเดิมไม่ถูกต้อง" };
+
+  return { name, en, type, brand, res, price, oldPrice, rating, reviews, ai };
+}
+
+function revalidateStorefront(id?: number) {
+  revalidatePath("/");
+  revalidatePath("/products");
+  if (id) revalidatePath(`/products/${id}`);
+  revalidatePath("/admin");
+}
+
+export async function createProduct(
+  formData: FormData
+): Promise<{ error?: string }> {
+  await requireAdmin();
+  const parsed = parseProductForm(formData);
+  if ("error" in parsed) return parsed;
+
+  const created = await prisma.product.create({ data: parsed });
+  revalidateStorefront(created.id);
+  redirect("/admin");
+}
+
+export async function updateProduct(
+  id: number,
+  formData: FormData
+): Promise<{ error?: string }> {
+  await requireAdmin();
+  const parsed = parseProductForm(formData);
+  if ("error" in parsed) return parsed;
+
+  await prisma.product.update({ where: { id }, data: parsed });
+  revalidateStorefront(id);
+  redirect("/admin");
+}
+
+export async function deleteProduct(id: number): Promise<void> {
+  await requireAdmin();
+  await prisma.product.delete({ where: { id } });
+  revalidateStorefront(id);
+}
