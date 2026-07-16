@@ -19,3 +19,12 @@ declare module "next-auth/jwt" {
     role?: Role;
   }
 }
+
+// @auth/core imports JWT directly from "@auth/core/jwt", so the session
+// callback's token parameter uses that type — augment it here too.
+declare module "@auth/core/jwt" {
+  interface JWT {
+    id?: string;
+    role?: Role;
+  }
+}
