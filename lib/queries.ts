@@ -11,52 +11,59 @@ import { decorate, type DecoratedProduct } from "@/lib/products";
 export const PRODUCTS_TAG = "products";
 const REVALIDATE_SECONDS = 300;
 
-export const getAllProducts = unstable_cache(
-  async (): Promise<DecoratedProduct[]> => {
-    const rows = await prisma.product.findMany({ orderBy: { id: "asc" } });
-    return rows.map(decorate);
-  },
-  ["getAllProducts"],
-  { tags: [PRODUCTS_TAG], revalidate: REVALIDATE_SECONDS }
-);
+// Only cache in production. In development we always read fresh from the DB so
+// admin edits / seed changes show immediately (unstable_cache otherwise
+// persists stale data across requests even in dev).
+const useCache = process.env.NODE_ENV === "production";
 
-export const getProduct = unstable_cache(
-  async (id: number): Promise<DecoratedProduct | null> => {
-    if (!Number.isInteger(id)) return null;
-    const row = await prisma.product.findUnique({ where: { id } });
-    return row ? decorate(row) : null;
-  },
-  ["getProduct"],
-  { tags: [PRODUCTS_TAG], revalidate: REVALIDATE_SECONDS }
-);
+async function readAllProducts(): Promise<DecoratedProduct[]> {
+  const rows = await prisma.product.findMany({ orderBy: { id: "asc" } });
+  return rows.map(decorate);
+}
 
-export const bestSellers = unstable_cache(
-  async (n = 4): Promise<DecoratedProduct[]> => {
-    const rows = await prisma.product.findMany({
-      orderBy: { rating: "desc" },
-      take: n,
-    });
-    return rows.map(decorate);
-  },
-  ["bestSellers"],
-  { tags: [PRODUCTS_TAG], revalidate: REVALIDATE_SECONDS }
-);
+async function readProduct(id: number): Promise<DecoratedProduct | null> {
+  if (!Number.isInteger(id)) return null;
+  const row = await prisma.product.findUnique({ where: { id } });
+  return row ? decorate(row) : null;
+}
 
-export const typeCounts = unstable_cache(
-  async (): Promise<Record<string, number>> => {
-    const grouped = await prisma.product.groupBy({
-      by: ["type"],
-      _count: { _all: true },
-    });
-    const counts: Record<string, number> = {};
-    let all = 0;
-    for (const g of grouped) {
-      counts[g.type] = g._count._all;
-      all += g._count._all;
-    }
-    counts.all = all;
-    return counts;
-  },
-  ["typeCounts"],
-  { tags: [PRODUCTS_TAG], revalidate: REVALIDATE_SECONDS }
-);
+async function readBestSellers(n = 4): Promise<DecoratedProduct[]> {
+  const rows = await prisma.product.findMany({
+    orderBy: { rating: "desc" },
+    take: n,
+  });
+  return rows.map(decorate);
+}
+
+async function readTypeCounts(): Promise<Record<string, number>> {
+  const grouped = await prisma.product.groupBy({
+    by: ["type"],
+    _count: { _all: true },
+  });
+  const counts: Record<string, number> = {};
+  let all = 0;
+  for (const g of grouped) {
+    counts[g.type] = g._count._all;
+    all += g._count._all;
+  }
+  counts.all = all;
+  return counts;
+}
+
+const opts = { tags: [PRODUCTS_TAG], revalidate: REVALIDATE_SECONDS };
+
+export const getAllProducts = useCache
+  ? unstable_cache(readAllProducts, ["getAllProducts"], opts)
+  : readAllProducts;
+
+export const getProduct = useCache
+  ? unstable_cache(readProduct, ["getProduct"], opts)
+  : readProduct;
+
+export const bestSellers = useCache
+  ? unstable_cache(readBestSellers, ["bestSellers"], opts)
+  : readBestSellers;
+
+export const typeCounts = useCache
+  ? unstable_cache(readTypeCounts, ["typeCounts"], opts)
+  : readTypeCounts;

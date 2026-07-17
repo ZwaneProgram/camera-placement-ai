@@ -13,6 +13,9 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get("image") as File;
     const selectedPosition = formData.get("selectedPosition") as string;
+    // Optional: a clean product reference shot (2nd product image, plain bg) so
+    // the AI composites the exact camera model instead of a generic dome.
+    const productImageUrl = (formData.get("productImageUrl") as string) || null;
     if (!file) return NextResponse.json({ error: "No image provided" }, { status: 400 });
 
     const bytes = await file.arrayBuffer();
@@ -20,8 +23,25 @@ export async function POST(req: NextRequest) {
     const mimeType = file.type || "image/jpeg";
     const dataUrl = `data:${mimeType};base64,${base64}`;
 
-    const imagePrompt = `This is a room photo. Add exactly 1 realistic white dome CCTV security camera mounted on the wall near the ceiling at this specific location: ${selectedPosition}. ` +
-      `Keep EVERYTHING else in the image completely identical — same furniture, floor, walls, colors, lighting, shadows, and perspective. Only add the single camera. Photorealistic result.`;
+    const imagePrompt = productImageUrl
+      ? `You are EDITING the FIRST image (a room photo), not creating a new image. The SECOND image shows the exact CCTV camera product to add. ` +
+        `Return the FIRST image EXACTLY as-is — identical room, furniture, layout, wall positions, colors, lighting, and camera angle — with only ONE change: mount one copy of the camera from the SECOND image on the wall or ceiling near ${selectedPosition}. ` +
+        `The added camera must be clearly visible and in focus, at a realistic real-world size (about the size of an actual CCTV camera — not tiny), matching the shape and color of the product in the second image, with shadows and lighting consistent with the room. ` +
+        `Do NOT redraw, re-render, mirror, restyle, rearrange, or change the room or its perspective in any way. Composite only the single camera into the existing photo. Photorealistic.`
+      : `You are EDITING this room photo, not creating a new image. Add exactly 1 realistic white dome CCTV security camera mounted on the wall or ceiling near ${selectedPosition}. ` +
+        `The camera must be clearly visible, in focus, and at a realistic real-world size. Keep EVERYTHING else completely identical — same furniture, floor, walls, colors, lighting, shadows, and perspective. Do NOT re-render or change the room. Only add the single camera. Photorealistic result.`;
+
+    const content: Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string } }
+    > = [
+      { type: "text", text: imagePrompt },
+      { type: "image_url", image_url: { url: dataUrl } }, // room photo (first)
+    ];
+    // The product reference goes second so the prompt's "SECOND image" lines up.
+    if (productImageUrl) {
+      content.push({ type: "image_url", image_url: { url: productImageUrl } });
+    }
 
     // Gemini "Nano Banana" returns images via the CHAT endpoint in message.images[],
     // NOT the /images endpoint. Request the image modality explicitly.
@@ -31,15 +51,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-image",
         modalities: ["image", "text"],
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: imagePrompt },
-              { type: "image_url", image_url: { url: dataUrl } },
-            ],
-          },
-        ],
+        messages: [{ role: "user", content }],
       }),
     });
 

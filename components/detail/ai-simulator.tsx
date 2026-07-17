@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, Upload, Download, RotateCcw } from "lucide-react";
+import { Sparkles, Upload, Download, RotateCcw, RotateCw, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { type DecoratedProduct } from "@/lib/products";
@@ -65,6 +65,29 @@ export const AiSimulator = React.forwardRef<
   const [selected, setSelected] = React.useState<number | null>(null); // index 0-2
   const [generatedImage, setGeneratedImage] = React.useState<string | null>(null);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+  // Full-screen image preview (lightbox). Holds the URL to show, or null.
+  const [lightbox, setLightbox] = React.useState<string | null>(null);
+  // Landscape toggle (mobile) — rotates the lightbox image 90° so it fills
+  // a portrait screen when the phone is turned sideways.
+  const [rotated, setRotated] = React.useState(false);
+
+  // Close the lightbox on Escape and lock body scroll while it's open.
+  React.useEffect(() => {
+    if (!lightbox) {
+      setRotated(false);
+      return;
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightbox(null);
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [lightbox]);
 
   const fileRef = React.useRef<HTMLInputElement>(null);
   const downloadRef = React.useRef<HTMLAnchorElement>(null);
@@ -162,6 +185,14 @@ export const AiSimulator = React.forwardRef<
       fd.append("image", file);
       fd.append("selectedPosition", chosen.position);
 
+      // For AI-tagged products, pass the clean product reference shot (2nd
+      // image, plain bg) so the AI composites this exact camera into the room.
+      if (product.ai) {
+        const ref =
+          product.images[1] ?? product.images[0] ?? product.imageUrl ?? null;
+        if (ref) fd.append("productImageUrl", ref);
+      }
+
       const res = await fetch("/api/generate", { method: "POST", body: fd });
       const json = (await res.json()) as Partial<GenerateSuccess> & { error?: string };
 
@@ -193,6 +224,40 @@ export const AiSimulator = React.forwardRef<
     a.href = generatedImage;
     a.download = "ai-camera-placement.png";
     a.click();
+  };
+
+  // ---- Marker dragging (placements step) ----
+
+  const imgWrapRef = React.useRef<HTMLDivElement>(null);
+  const draggingRef = React.useRef<number | null>(null);
+
+  const moveMarker = (clientX: number, clientY: number, i: number) => {
+    const rect = imgWrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const clamp = (v: number) => Math.min(100, Math.max(0, v));
+    const x = clamp(((clientX - rect.left) / rect.width) * 100);
+    const y = clamp(((clientY - rect.top) / rect.height) * 100);
+    setPlacements((prev) =>
+      prev.map((p, idx) => (idx === i ? { ...p, x, y } : p))
+    );
+  };
+
+  const onMarkerPointerDown = (e: React.PointerEvent, i: number) => {
+    e.preventDefault();
+    setSelected(i);
+    draggingRef.current = i;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onMarkerPointerMove = (e: React.PointerEvent, i: number) => {
+    if (draggingRef.current !== i) return;
+    moveMarker(e.clientX, e.clientY, i);
+  };
+
+  const onMarkerPointerUp = (e: React.PointerEvent, i: number) => {
+    if (draggingRef.current !== i) return;
+    draggingRef.current = null;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
   };
 
   // ---- Status dot colour ----
@@ -292,7 +357,7 @@ export const AiSimulator = React.forwardRef<
                 </div>
                 <div className="mb-[18px] text-sm leading-relaxed text-muted-foreground">
                   AI จะวิเคราะห์ผังห้องและแนะนำตำแหน่งติดตั้ง{" "}
-                  <b className="text-ink">{product.name}</b> ที่ครอบคลุมที่สุด
+                  <b className="text-ink">{product.displayName}</b> ที่ครอบคลุมที่สุด
                 </div>
                 <div className="flex flex-wrap gap-2.5">
                   <Button variant="gradient" onClick={analyze} className="h-12">
@@ -326,20 +391,29 @@ export const AiSimulator = React.forwardRef<
           {/* ── PLACEMENTS ── */}
           {state === "placements" && (
             <div>
-              <div className="mb-4 text-[15px] font-bold text-ink">
+              <div className="mb-1.5 text-[15px] font-bold text-ink">
                 เลือกตำแหน่งที่ต้องการติดตั้ง
               </div>
+              <div className="mb-4 text-[13px] text-muted-foreground">
+                แตะเพื่อเลือก · ลากหมุดเพื่อปรับตำแหน่งบนภาพได้
+              </div>
 
-              {/* Image with markers */}
-              <div className="relative mb-5 w-full overflow-hidden rounded-[14px] border border-line" style={{ aspectRatio: "4/3" }}>
+              {/* Image with draggable markers */}
+              <div
+                ref={imgWrapRef}
+                className="relative mb-5 w-full touch-none overflow-hidden rounded-[14px] border border-line"
+                style={{ aspectRatio: "4/3" }}
+              >
                 <div className="absolute inset-0" style={previewStyle} />
                 {placements.map((p, i) => (
                   <button
                     key={i}
-                    onClick={() => setSelected(i)}
+                    onPointerDown={(e) => onMarkerPointerDown(e, i)}
+                    onPointerMove={(e) => onMarkerPointerMove(e, i)}
+                    onPointerUp={(e) => onMarkerPointerUp(e, i)}
                     title={p.position}
                     className={cn(
-                      "absolute flex size-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-2 border-white text-sm font-bold text-white shadow-lg transition-transform hover:scale-110",
+                      "absolute flex size-8 -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center rounded-full border-2 border-white text-sm font-bold text-white shadow-lg transition-[box-shadow] cursor-grab active:cursor-grabbing active:scale-110",
                       selected === i ? "scale-110 ring-2 ring-white ring-offset-2" : ""
                     )}
                     style={{
@@ -425,7 +499,11 @@ export const AiSimulator = React.forwardRef<
                   <div className="mb-2 text-[13px] font-semibold text-muted-foreground">
                     ภาพต้นฉบับ
                   </div>
-                  <div className="relative overflow-hidden rounded-[14px] border border-line" style={{ aspectRatio: "4/3" }}>
+                  <div
+                    onClick={() => preview && setLightbox(preview)}
+                    className="relative cursor-zoom-in overflow-hidden rounded-[14px] border border-line"
+                    style={{ aspectRatio: "4/3" }}
+                  >
                     <div className="absolute inset-0" style={previewStyle} />
                   </div>
                 </div>
@@ -437,7 +515,9 @@ export const AiSimulator = React.forwardRef<
                   <img
                     src={generatedImage}
                     alt="ภาพจำลองตำแหน่งกล้องวงจรปิด"
-                    className="w-full rounded-[14px] border-2 border-brand-teal object-cover"
+                    onClick={() => setLightbox(generatedImage)}
+                    title="คลิกเพื่อดูภาพขยาย"
+                    className="w-full cursor-zoom-in rounded-[14px] border-2 border-brand-teal object-cover"
                     style={{ aspectRatio: "4/3" }}
                   />
                 </div>
@@ -529,6 +609,49 @@ export const AiSimulator = React.forwardRef<
           <div className="ml-auto font-mono text-xs text-white/45">{state}</div>
         </div>
       </div>
+
+      {/* Full-screen lightbox */}
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          className="fixed inset-0 z-[60] flex animate-sv-fade items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+        >
+          <button
+            onClick={() => setLightbox(null)}
+            aria-label="ปิด"
+            className="absolute right-4 top-4 z-10 flex size-11 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
+          >
+            <X className="size-5" />
+          </button>
+          {/* Landscape rotate — mobile only */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setRotated((r) => !r);
+            }}
+            aria-label="หมุนภาพแนวนอน"
+            className="absolute left-4 top-4 z-10 flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-white/25 md:hidden"
+          >
+            <RotateCw className="size-4" />
+            {rotated ? "แนวตั้ง" : "แนวนอน"}
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox}
+            alt="ภาพขยาย"
+            onClick={(e) => e.stopPropagation()}
+            style={
+              rotated
+                ? { maxWidth: "92vh", maxHeight: "92vw" }
+                : { maxWidth: "94vw", maxHeight: "92vh" }
+            }
+            className={cn(
+              "rounded-xl object-contain shadow-2xl transition-transform duration-300",
+              rotated && "rotate-90"
+            )}
+          />
+        </div>
+      )}
     </section>
   );
 });

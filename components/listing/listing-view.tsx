@@ -22,7 +22,7 @@ import {
 } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
-const PER_PAGE = 6;
+const PER_PAGE = 8;
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 6000;
@@ -175,7 +175,7 @@ export function ListingView({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3.5 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
               {pageProducts.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}

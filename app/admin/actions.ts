@@ -3,11 +3,13 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { Prisma } from "@prisma/client";
+
 import { auth } from "@/auth";
 import { deleteProductImage } from "@/lib/blob";
 import { prisma } from "@/lib/prisma";
 import { PRODUCTS_TAG } from "@/lib/queries";
-import { PRODUCT_TYPES, type ProductType } from "@/lib/products";
+import { PRODUCT_TYPES, WARRANTY_UNITS, type ProductType } from "@/lib/products";
 
 async function requireAdmin() {
   const session = await auth();
@@ -25,6 +27,12 @@ type ParsedProduct = {
   price: number;
   oldPrice: number | null;
   ai: boolean;
+  tags: string[];
+  highlights: string[];
+  description: string | null;
+  specs: { k: string; v: string }[];
+  warrantyValue: number | null;
+  warrantyUnit: string | null;
 };
 
 function parseProductForm(formData: FormData): ParsedProduct | { error: string } {
@@ -38,13 +46,70 @@ function parseProductForm(formData: FormData): ParsedProduct | { error: string }
   const oldPrice = oldRaw === "" ? null : Number(oldRaw);
   const ai = formData.get("ai") === "on";
 
-  if (!name || !en || !brand) return { error: "กรุณากรอกข้อมูลให้ครบ" };
+  // Tags: comma-separated short chips. Empty by default (no auto tags).
+  const tags = String(formData.get("tags") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  // Highlights: one bullet per line in the textarea.
+  const highlights = String(formData.get("highlights") ?? "")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // Description: free text; empty = fall back to the auto template.
+  const description = String(formData.get("description") ?? "").trim() || null;
+
+  // Specs: "key: value" per line.
+  const specs = String(formData.get("specs") ?? "")
+    .split("\n")
+    .map((line) => {
+      const idx = line.indexOf(":");
+      if (idx === -1) return null;
+      const k = line.slice(0, idx).trim();
+      const v = line.slice(idx + 1).trim();
+      return k && v ? { k, v } : null;
+    })
+    .filter((s): s is { k: string; v: string } => s !== null);
+
+  // Warranty: a number + a unit (วัน / เดือน / ปี). Empty number = no warranty.
+  const warrantyRaw = String(formData.get("warrantyValue") ?? "").trim();
+  const warrantyValue = warrantyRaw === "" ? null : Number(warrantyRaw);
+  const unitRaw = String(formData.get("warrantyUnit") ?? "ปี");
+  const warrantyUnit = (WARRANTY_UNITS as readonly string[]).includes(unitRaw)
+    ? unitRaw
+    : "ปี";
+
+  if (!name && !en)
+    return { error: "กรุณากรอกชื่อสินค้าอย่างน้อย 1 ภาษา (ไทยหรืออังกฤษ)" };
   if (!PRODUCT_TYPES.includes(type)) return { error: "ประเภทสินค้าไม่ถูกต้อง" };
   if (!Number.isFinite(price) || price < 0) return { error: "ราคาไม่ถูกต้อง" };
   if (oldPrice !== null && (!Number.isFinite(oldPrice) || oldPrice < 0))
     return { error: "ราคาเดิมไม่ถูกต้อง" };
+  if (
+    warrantyValue !== null &&
+    (!Number.isInteger(warrantyValue) || warrantyValue < 0)
+  )
+    return { error: "ระยะเวลารับประกันไม่ถูกต้อง" };
 
-  return { name, en, type, brand, res, price, oldPrice, ai };
+  return {
+    name,
+    en,
+    type,
+    brand,
+    res,
+    price,
+    oldPrice,
+    ai,
+    tags,
+    highlights,
+    description,
+    specs,
+    warrantyValue,
+    warrantyUnit: warrantyValue !== null ? warrantyUnit : null,
+  };
 }
 
 /**
@@ -88,7 +153,12 @@ export async function createProduct(
   if (!Array.isArray(urls)) return { error: urls.error };
 
   const created = await prisma.product.create({
-    data: { ...parsed, imageUrl: urls[0] ?? null, images: urls },
+    data: {
+      ...parsed,
+      specs: parsed.specs as Prisma.InputJsonValue,
+      imageUrl: urls[0] ?? null,
+      images: urls,
+    },
   });
   revalidateStorefront(created.id);
   redirect("/admin");
@@ -120,7 +190,12 @@ export async function updateProduct(
 
   await prisma.product.update({
     where: { id },
-    data: { ...parsed, imageUrl: urls[0] ?? null, images: urls },
+    data: {
+      ...parsed,
+      specs: parsed.specs as Prisma.InputJsonValue,
+      imageUrl: urls[0] ?? null,
+      images: urls,
+    },
   });
   revalidateStorefront(id);
   redirect("/admin");

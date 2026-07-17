@@ -4,7 +4,7 @@ import * as React from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
-import type { Product } from "@/lib/products";
+import type { DecoratedProduct } from "@/lib/products";
 import { formatBaht } from "@/lib/utils";
 import {
   addToCart,
@@ -29,7 +29,7 @@ interface CartContextValue {
   open: boolean;
   setOpen: (open: boolean) => void;
   toggle: () => void;
-  add: (product: Pick<Product, "id" | "name" | "price">, qty?: number) => void;
+  add: (product: Pick<DecoratedProduct, "id" | "displayName" | "price">, qty?: number) => void;
   changeQty: (id: number, delta: number) => void;
   remove: (id: number) => void;
 }
@@ -92,7 +92,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [authed]);
 
   const add = React.useCallback(
-    (product: Pick<Product, "id" | "name" | "price">, qty = 1) => {
+    (product: Pick<DecoratedProduct, "id" | "displayName" | "price">, qty = 1) => {
       if (authed) {
         addToCart(product.id, qty).then(() => getCartDetailed().then(setItems));
       } else {
@@ -105,11 +105,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           }
           return [
             ...prev,
-            { id: product.id, name: product.name, price: product.price, qty },
+            { id: product.id, name: product.displayName, price: product.price, qty },
           ];
         });
       }
-      toast(`เพิ่ม "${product.name}" ลงตะกร้าแล้ว`, { duration: 2200 });
+      toast(`เพิ่ม "${product.displayName}" ลงตะกร้าแล้ว`, { duration: 2200 });
     },
     [authed]
   );

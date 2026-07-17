@@ -23,7 +23,7 @@ export default async function EditProductPage({
           สินค้า
         </Link>
         <span className="mx-1.5">/</span>
-        <span className="truncate text-ink">แก้ไข · {product.name}</span>
+        <span className="truncate text-ink">แก้ไข · {product.displayName}</span>
       </nav>
       <ProductForm product={product} action={action} />
     </div>

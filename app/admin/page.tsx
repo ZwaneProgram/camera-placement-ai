@@ -67,13 +67,15 @@ export default async function AdminProductsPage() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="truncate font-semibold text-ink">
-                              {p.name}
+                              {p.displayName}
                             </span>
                             {p.ai && <Badge variant="ai">AI</Badge>}
                           </div>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {p.en}
-                          </span>
+                          {p.subName && (
+                            <span className="truncate text-xs text-muted-foreground">
+                              {p.subName}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -96,7 +98,7 @@ export default async function AdminProductsPage() {
                             แก้ไข
                           </Link>
                         </Button>
-                        <ProductRowActions id={p.id} name={p.name} />
+                        <ProductRowActions id={p.id} name={p.displayName} />
                       </div>
                     </td>
                   </tr>

@@ -11,8 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { AiSimulator } from "@/components/detail/ai-simulator";
 import {
   productDesc,
-  productHighlights,
   productSpecs,
+  warrantyLabel,
   type DecoratedProduct,
 } from "@/lib/products";
 import { CONTACT } from "@/lib/contact";
@@ -30,8 +30,9 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
       : [];
   const [active, setActive] = React.useState<string | null>(gallery[0] ?? null);
 
-  const highlights = productHighlights(product);
+  const highlights = product.highlights ?? [];
   const specs = productSpecs(product);
+  const warranty = warrantyLabel(product);
 
   return (
     <main className="mx-auto max-w-[1240px] animate-sv-fade px-5 pt-7 pb-15">
@@ -39,7 +40,7 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
         <Link href="/" className="hover:text-brand-blue">
           หน้าแรก
         </Link>{" "}
-        / {product.typeLabel} / {product.name}
+        / {product.typeLabel} / {product.displayName}
       </div>
 
       <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-2">
@@ -98,35 +99,45 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
 
         {/* Info */}
         <div>
-          <div className="mb-3">
-            <Badge variant="accent">{product.brand}</Badge>
-          </div>
+          {product.brand && (
+            <div className="mb-3">
+              <Badge variant="accent">{product.brand}</Badge>
+            </div>
+          )}
           <h1 className="mb-2 text-[clamp(24px,3.2vw,34px)] leading-tight font-bold tracking-tight">
-            {product.name}
+            {product.displayName}
           </h1>
-          <div className="mb-[18px] font-mono text-[13px] text-muted-foreground">
-            {product.en}
-          </div>
+          {product.subName && (
+            <div className="mb-[18px] font-mono text-[13px] text-muted-foreground">
+              {product.subName}
+            </div>
+          )}
           <div className="mb-[22px] flex items-baseline gap-3">
             <div className="text-4xl font-bold text-ink">
               {product.priceLabel}
             </div>
-            <div className="text-lg text-muted-foreground line-through">
-              {product.oldPriceLabel}
-            </div>
-            <Badge variant="teal">-{product.discount}%</Badge>
+            {product.discount > 0 && (
+              <>
+                <div className="text-lg text-muted-foreground line-through">
+                  {product.oldPriceLabel}
+                </div>
+                <Badge variant="teal">-{product.discount}%</Badge>
+              </>
+            )}
           </div>
 
-          <div className="mb-6 flex flex-col gap-2">
-            {highlights.map((h) => (
-              <div key={h} className="flex items-center gap-2.5 text-[15px]">
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-teal text-ink">
-                  <Check className="size-3" strokeWidth={3} />
-                </span>
-                {h}
-              </div>
-            ))}
-          </div>
+          {highlights.length > 0 && (
+            <div className="mb-6 flex flex-col gap-2">
+              {highlights.map((h) => (
+                <div key={h} className="flex items-center gap-2.5 text-[15px]">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-teal text-ink">
+                    <Check className="size-3" strokeWidth={3} />
+                  </span>
+                  {h}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="mb-3.5 flex flex-wrap gap-3">
             <div className="flex items-center overflow-hidden rounded-xl border-[1.5px] border-line">
@@ -153,15 +164,17 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
               เพิ่มลงตะกร้า
             </Button>
           </div>
-          <Button
-            variant="accent"
-            onClick={() =>
-              aiRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-            }
-            className="h-13 w-full rounded-[14px] border-[1.5px] border-brand-blue text-base"
-          >
-            <Sparkles className="size-4" /> ลองวางกล้องในห้องคุณด้วย AI
-          </Button>
+          {product.ai && (
+            <Button
+              variant="accent"
+              onClick={() =>
+                aiRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
+              className="h-13 w-full rounded-[14px] border-[1.5px] border-brand-blue text-base"
+            >
+              <Sparkles className="size-4" /> ลองวางกล้องในห้องคุณด้วย AI
+            </Button>
+          )}
 
           {/* Chat card */}
           <div className="mt-4 rounded-2xl border border-line bg-secondary px-[18px] py-4 shadow-[0_8px_24px_rgba(14,27,42,.06)]">
@@ -200,17 +213,12 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
             </div>
           </div>
 
-          <div className="mt-[22px] flex flex-wrap gap-5">
-            {["รับประกัน 2 ปี", "ติดตั้งฟรี กทม.", "ส่งฟรีทั่วไทย"].map((t) => (
-              <div
-                key={t}
-                className="flex items-center gap-2 text-[13px] text-muted-foreground"
-              >
-                <span className="size-2 rounded-full bg-brand-teal" />
-                {t}
-              </div>
-            ))}
-          </div>
+          {warranty && (
+            <div className="mt-[22px] flex items-center gap-2 text-[13px] text-muted-foreground">
+              <span className="size-2 rounded-full bg-brand-teal" />
+              รับประกัน {warranty}
+            </div>
+          )}
         </div>
       </div>
 
@@ -238,12 +246,14 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
         </div>
       </section>
 
-      {/* AI simulator */}
-      <AiSimulator
-        ref={aiRef}
-        product={product}
-        onAddToCart={() => add(product, qty)}
-      />
+      {/* AI simulator — only for AI-tagged products */}
+      {product.ai && (
+        <AiSimulator
+          ref={aiRef}
+          product={product}
+          onAddToCart={() => add(product, qty)}
+        />
+      )}
     </main>
   );
 }

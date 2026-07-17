@@ -23,18 +23,14 @@ export const TYPE_LABEL: Record<ProductType, string> = {
 /** Row shape consumed by the UI. `oldPrice`/`imageUrl` may be null in the DB. */
 export type Product = DbProduct;
 
-const TAG_MAP: Record<ProductType, string[]> = {
-  cctv: ["", "อินฟราเรดกลางคืน", "ดูผ่านมือถือ"],
-  sensor: ["ไร้สาย", "แจ้งเตือนทันที"],
-  alarm: ["เสียง 120dB", "ติดตั้งง่าย"],
-  lock: ["สแกนลายนิ้วมือ", "ปลดล็อกผ่านแอป"],
-  nvr: ["บันทึก 24 ชม.", "HDD 2TB"],
-};
-
 export interface DecoratedProduct {
   id: number;
   name: string;
   en: string;
+  /** Primary title to show: Thai name if present, else English name. */
+  displayName: string;
+  /** English subtitle — only when BOTH names exist (else null). */
+  subName: string | null;
   type: ProductType;
   typeLabel: string;
   brand: string;
@@ -46,6 +42,11 @@ export interface DecoratedProduct {
   ai: boolean;
   imageUrl: string | null;
   images: string[];
+  highlights: string[];
+  description: string | null;
+  specs: { k: string; v: string }[];
+  warrantyValue: number | null;
+  warrantyUnit: string | null;
   priceLabel: string;
   oldPriceLabel: string;
   discount: number;
@@ -54,17 +55,36 @@ export interface DecoratedProduct {
   tags: string[];
 }
 
+/** Allowed warranty units for the admin dropdown. */
+export const WARRANTY_UNITS = ["วัน", "เดือน", "ปี"] as const;
+export type WarrantyUnit = (typeof WARRANTY_UNITS)[number];
+
+/** Human warranty label, e.g. "2 ปี" — null when no warranty is set. */
+export function warrantyLabel(p: DecoratedProduct): string | null {
+  if (p.warrantyValue == null || p.warrantyValue <= 0) return null;
+  return `${p.warrantyValue} ${p.warrantyUnit ?? "ปี"}`;
+}
+
 export function decorate(p: Product): DecoratedProduct {
   const type = p.type as ProductType;
   const old = p.oldPrice ?? p.price;
-  const tags = (TAG_MAP[type] ?? [])
-    .map((t, i) => (i === 0 && type === "cctv" ? p.res : t))
-    .filter(Boolean)
-    .slice(0, 3);
+  const rawName = p.name?.trim() ?? "";
+  const rawEn = p.en?.trim() ?? "";
+  const specs = Array.isArray(p.specs)
+    ? (p.specs as unknown[]).filter(
+        (s): s is { k: string; v: string } =>
+          !!s &&
+          typeof s === "object" &&
+          typeof (s as { k?: unknown }).k === "string" &&
+          typeof (s as { v?: unknown }).v === "string"
+      )
+    : [];
   return {
     id: p.id,
     name: p.name,
     en: p.en,
+    displayName: rawName || rawEn,
+    subName: rawName && rawEn ? rawEn : null,
     type,
     typeLabel: TYPE_LABEL[type] ?? p.type,
     brand: p.brand,
@@ -76,12 +96,17 @@ export function decorate(p: Product): DecoratedProduct {
     ai: p.ai,
     imageUrl: p.imageUrl,
     images: p.images,
+    highlights: p.highlights,
+    description: p.description ?? null,
+    specs,
+    warrantyValue: p.warrantyValue,
+    warrantyUnit: p.warrantyUnit,
     priceLabel: formatBaht(p.price),
     oldPriceLabel: formatBaht(old),
     discount: old > p.price ? Math.round((1 - p.price / old) * 100) : 0,
     ratingLabel: p.rating.toFixed(1),
     reviewsLabel: `(${p.reviews})`,
-    tags,
+    tags: p.tags,
   };
 }
 
@@ -126,6 +151,7 @@ export function productHighlights(p: DecoratedProduct): string[] {
 }
 
 export function productDesc(p: DecoratedProduct): string {
+  if (p.description?.trim()) return p.description;
   switch (p.type) {
     case "cctv":
       return `${p.brand} ${p.name} กล้องวงจรปิดความละเอียดสูง ออกแบบสำหรับบ้านและธุรกิจในประเทศไทย มองเห็นกลางคืนได้ชัดเจน รองรับดูสดและย้อนหลังผ่านแอปบนมือถือ พร้อมระบบแจ้งเตือนเมื่อตรวจจับความเคลื่อนไหว รับประกันศูนย์ไทย`;
@@ -141,20 +167,18 @@ export function productDesc(p: DecoratedProduct): string {
 }
 
 export function productSpecs(p: DecoratedProduct): { k: string; v: string }[] {
-  const rows: { k: string; v: string }[] = [
-    { k: "ยี่ห้อ", v: p.brand },
-    { k: "ประเภท", v: p.typeLabel },
-  ];
+  // Admin-defined specs override the derived defaults entirely.
+  if (p.specs.length > 0) return p.specs;
+
+  const rows: { k: string; v: string }[] = [{ k: "ประเภท", v: p.typeLabel }];
+  if (p.brand) rows.unshift({ k: "ยี่ห้อ", v: p.brand });
 
   if ((p.type === "cctv" || p.type === "nvr") && p.res !== "-") {
     rows.push({ k: "ความละเอียด", v: p.res });
   }
 
-  rows.push({ k: "การรับประกัน", v: "2 ปี (ศูนย์ไทย)" });
-
-  if (p.type === "cctv" || p.type === "nvr" || p.type === "alarm") {
-    rows.push({ k: "การติดตั้ง", v: "ฟรีในเขต กทม." });
-  }
+  const w = warrantyLabel(p);
+  if (w) rows.push({ k: "การรับประกัน", v: w });
 
   return rows;
 }

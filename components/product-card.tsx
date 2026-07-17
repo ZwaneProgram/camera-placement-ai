@@ -47,11 +47,13 @@ export function ProductCard({ product }: { product: DecoratedProduct }) {
       </div>
 
       <div className="flex flex-1 flex-col px-[15px] pt-3.5 pb-4">
-        <div className="mb-1.5 font-mono text-[11px] font-semibold text-brand-blue">
-          {product.brand}
-        </div>
+        {product.brand && (
+          <div className="mb-1.5 font-mono text-[11px] font-semibold text-brand-blue">
+            {product.brand}
+          </div>
+        )}
         <div className="mb-2 text-[15px] font-semibold leading-snug text-ink">
-          {product.name}
+          {product.displayName}
         </div>
         <div className="mb-2.5 flex flex-wrap gap-1.5">
           {product.tags.map((tag) => (
@@ -61,8 +63,8 @@ export function ProductCard({ product }: { product: DecoratedProduct }) {
           ))}
         </div>
         <div className="mt-auto flex items-center justify-between gap-2">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[19px] font-bold text-ink">
+          <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5">
+            <span className="text-[18px] font-bold text-ink">
               {product.priceLabel}
             </span>
             {product.discount > 0 && (
@@ -77,7 +79,7 @@ export function ProductCard({ product }: { product: DecoratedProduct }) {
               add(product);
             }}
             aria-label="เพิ่มลงตะกร้า"
-            className="flex size-[42px] shrink-0 items-center justify-center rounded-xl bg-ink text-white transition-colors hover:bg-brand-blue"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-ink text-white transition-colors hover:bg-brand-blue"
           >
             <Plus className="size-5" />
           </button>

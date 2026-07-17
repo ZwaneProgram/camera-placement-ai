@@ -27,6 +27,12 @@ model Product {
   ai        Boolean    @default(false)
   imageUrl  String?
   images    String[]   @default([])
+  highlights    String[] @default([])
+  tags          String[] @default([])
+  description   String?
+  specs         Json     @default("[]")
+  warrantyValue Int?
+  warrantyUnit  String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   cartItems CartItem[]

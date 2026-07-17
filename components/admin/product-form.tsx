@@ -8,7 +8,13 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PRODUCT_TYPES, TYPE_LABEL, type DecoratedProduct } from "@/lib/products";
+import {
+  PRODUCT_TYPES,
+  TYPE_LABEL,
+  WARRANTY_UNITS,
+  productSpecs,
+  type DecoratedProduct,
+} from "@/lib/products";
 import { cn } from "@/lib/utils";
 
 const fieldCls =
@@ -145,6 +151,10 @@ export function ProductForm({
     if (result?.error) toast.error(result.error);
   }
 
+  const specsDefault = (product ? productSpecs(product) : [])
+    .map((s) => `${s.k}: ${s.v}`)
+    .join("\n");
+
   return (
     <form
       onSubmit={onSubmit}
@@ -158,23 +168,21 @@ export function ProductForm({
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Field label="ชื่อสินค้า" hint="ภาษาไทย">
+            <Field label="ชื่อสินค้า" hint="ภาษาไทย · กรอกอย่างน้อย 1 ภาษา">
               <input
                 name="name"
                 defaultValue={product?.name}
                 placeholder="เช่น กล้องวงจรปิด 4MP"
-                required
                 className={fieldCls}
               />
             </Field>
           </div>
           <div className="sm:col-span-2">
-            <Field label="ชื่อสินค้า" hint="ภาษาอังกฤษ">
+            <Field label="ชื่อสินค้า" hint="ภาษาอังกฤษ · กรอกอย่างน้อย 1 ภาษา">
               <input
                 name="en"
                 defaultValue={product?.en}
                 placeholder="e.g. 4MP Security Camera"
-                required
                 className={fieldCls}
               />
             </Field>
@@ -197,12 +205,11 @@ export function ProductForm({
               </span>
             </div>
           </Field>
-          <Field label="ยี่ห้อ">
+          <Field label="ยี่ห้อ" hint="ไม่บังคับ">
             <input
               name="brand"
               defaultValue={product?.brand}
               placeholder="เช่น Hikvision"
-              required
               className={fieldCls}
             />
           </Field>
@@ -212,6 +219,16 @@ export function ProductForm({
                 name="res"
                 defaultValue={product?.res ?? "-"}
                 placeholder="4MP"
+                className={fieldCls}
+              />
+            </Field>
+          </div>
+          <div className="sm:col-span-2">
+            <Field label="แท็ก" hint="คั่นด้วยจุลภาค (,) · เว้นว่างได้">
+              <input
+                name="tags"
+                defaultValue={product?.tags?.join(", ")}
+                placeholder="เช่น ไร้สาย, กันน้ำ, ดูผ่านมือถือ"
                 className={fieldCls}
               />
             </Field>
@@ -242,6 +259,84 @@ export function ProductForm({
               defaultValue={product?.old}
               placeholder="1590"
               className={fieldCls}
+            />
+          </Field>
+        </CardContent>
+      </Card>
+
+      {/* Highlights & warranty */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">จุดเด่นและการรับประกัน</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Field label="จุดเด่นสินค้า" hint="พิมพ์บรรทัดละ 1 ข้อ">
+            <textarea
+              name="highlights"
+              defaultValue={product?.highlights?.join("\n")}
+              placeholder={
+                "เชื่อมต่อไร้สาย ติดตั้งเองได้ง่าย\nแบตเตอรี่ใช้งานยาวนาน\nแจ้งเตือนทันทีเมื่อพบการเคลื่อนไหว"
+              }
+              rows={4}
+              className={cn(fieldCls, "h-auto resize-y py-3 leading-relaxed")}
+            />
+          </Field>
+          <Field label="การรับประกัน" hint="เว้นว่างถ้าไม่มี">
+            <div className="flex gap-2.5">
+              <input
+                name="warrantyValue"
+                type="number"
+                min={0}
+                defaultValue={product?.warrantyValue ?? ""}
+                placeholder="2"
+                className={cn(fieldCls, "flex-1")}
+              />
+              <div className="relative w-32 shrink-0">
+                <select
+                  name="warrantyUnit"
+                  defaultValue={product?.warrantyUnit ?? "ปี"}
+                  className={cn(fieldCls, "appearance-none pr-9")}
+                >
+                  {WARRANTY_UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  ▾
+                </span>
+              </div>
+            </div>
+          </Field>
+        </CardContent>
+      </Card>
+
+      {/* Description & specs */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">รายละเอียดและสเปค</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Field label="รายละเอียดสินค้า" hint="เว้นว่าง = ใช้ข้อความอัตโนมัติตามประเภท">
+            <textarea
+              name="description"
+              defaultValue={product?.description ?? ""}
+              placeholder="อธิบายรายละเอียดสินค้า จุดเด่น การใช้งาน…"
+              rows={4}
+              className={cn(fieldCls, "h-auto resize-y py-3 leading-relaxed")}
+            />
+          </Field>
+          <Field label="สเปคสินค้า" hint="บรรทัดละ 1 รายการ">
+            <textarea
+              name="specs"
+              defaultValue={specsDefault}
+              placeholder={"ยี่ห้อ: AjaxLite\nประเภท: เซ็นเซอร์\nความละเอียด: 4MP"}
+              rows={5}
+              className={cn(
+                fieldCls,
+                "h-auto resize-y py-3 font-mono text-[13px] leading-relaxed"
+              )}
             />
           </Field>
         </CardContent>
@@ -305,11 +400,11 @@ export function ProductForm({
                     className="pointer-events-none size-full object-cover"
                   />
                   {idx === 0 ? (
-                    <span className="absolute left-1.5 top-1.5 rounded-md bg-brand-teal px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                    <span className="absolute left-1.5 top-1.5 rounded-md bg-brand-teal px-1.5 py-0.5 text-[10px] font-bold leading-none text-ink shadow-sm">
                       รูปหลัก
                     </span>
                   ) : (
-                    <span className="absolute left-1.5 top-1.5 rounded-md bg-ink/55 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                    <span className="absolute left-1.5 top-1.5 rounded-md bg-ink/80 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm backdrop-blur-[2px]">
                       รูปย่อย
                     </span>
                   )}
