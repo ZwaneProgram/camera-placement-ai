@@ -10,17 +10,25 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AiSimulator } from "@/components/detail/ai-simulator";
 import {
-  PRODUCT_DESC,
+  productDesc,
   productHighlights,
   productSpecs,
   type DecoratedProduct,
 } from "@/lib/products";
+import { CONTACT } from "@/lib/contact";
 import { cn } from "@/lib/utils";
 
 export function ProductDetail({ product }: { product: DecoratedProduct }) {
   const { add } = useCart();
   const [qty, setQty] = React.useState(1);
   const aiRef = React.useRef<HTMLDivElement>(null);
+
+  const gallery = product.images.length
+    ? product.images
+    : product.imageUrl
+      ? [product.imageUrl]
+      : [];
+  const [active, setActive] = React.useState<string | null>(gallery[0] ?? null);
 
   const highlights = productHighlights(product);
   const specs = productSpecs(product);
@@ -36,11 +44,11 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
 
       <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-2">
         {/* Gallery */}
-        <div>
+        <div className="flex flex-col gap-3">
           <div className="sv-hatch relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[20px] border border-line shadow-[0_12px_30px_rgba(14,27,42,.08)]">
-            {product.imageUrl ? (
+            {active ? (
               <Image
-                src={product.imageUrl}
+                src={active}
                 alt={product.name}
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
@@ -60,17 +68,30 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
               </Badge>
             )}
           </div>
-          <div className="mt-3 grid grid-cols-4 gap-2.5">
-            {[0, 1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className={cn(
-                  "sv-hatch aspect-square rounded-xl",
-                  i === 0 ? "border-2 border-brand-blue" : "border border-line"
-                )}
-              />
-            ))}
-          </div>
+
+          {gallery.length > 1 && (
+            <div className="flex flex-wrap gap-2">
+              {gallery.map((url, i) => (
+                <button
+                  key={url + i}
+                  onClick={() => setActive(url)}
+                  className={cn(
+                    "relative size-16 shrink-0 overflow-hidden rounded-xl border-2",
+                    active === url ? "border-brand-teal" : "border-line"
+                  )}
+                  aria-label={`ภาพที่ ${i + 1}`}
+                >
+                  <Image
+                    src={url}
+                    alt={`${product.name} ${i + 1}`}
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Info */}
@@ -153,7 +174,9 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
             </div>
             <div className="flex flex-wrap gap-2.5">
               <a
-                href="#"
+                href={CONTACT.lineUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-12 min-w-[140px] flex-1 items-center justify-center gap-2 rounded-xl bg-success-line text-[15px] font-bold text-white"
               >
                 <span className="flex size-[22px] items-center justify-center rounded-md bg-white/25 text-xs font-bold">
@@ -162,7 +185,9 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
                 สั่งซื้อทาง LINE
               </a>
               <a
-                href="#"
+                href={CONTACT.facebookUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-12 min-w-[140px] flex-1 items-center justify-center gap-2 rounded-xl bg-facebook text-[15px] font-bold text-white"
               >
                 <span className="flex size-[22px] items-center justify-center rounded-md bg-white/25 text-[13px] font-bold">
@@ -191,7 +216,7 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
       <section className="mt-11 rounded-[20px] border border-line bg-secondary p-6 shadow-[0_10px_30px_rgba(14,27,42,.06)] sm:p-10">
         <h3 className="mb-4 text-[22px] font-bold">รายละเอียดสินค้า</h3>
         <p className="mb-9 max-w-[760px] text-base leading-loose text-muted-foreground">
-          {PRODUCT_DESC}
+          {productDesc(product)}
         </p>
 
         <h3 className="mb-4 text-[22px] font-bold">สเปคสินค้า</h3>

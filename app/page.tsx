@@ -53,8 +53,7 @@ export default async function HomePage() {
             {/* Copy (left) */}
             <div className="max-w-[248px] text-center lg:absolute lg:top-[52%] lg:left-0 lg:z-[3] lg:text-left">
               <p className="text-[15px] leading-relaxed text-muted-foreground">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do
-                eiusmod tempor incididunt ut labore.
+                ระบบรักษาความปลอดภัยอัจฉริยะ พร้อม AI ช่วยวางกล้องให้เหมาะกับบ้านและธุรกิจของคุณ
               </p>
             </div>
 
@@ -174,11 +173,11 @@ export default async function HomePage() {
           <div className="sv-dots-light absolute inset-0 opacity-50" />
           <div className="relative max-w-[560px] text-white">
             <h2 className="mb-2.5 text-[clamp(24px,3.4vw,34px)] font-bold tracking-tight">
-              Lorem ipsum dolor sit amet
+              เริ่มปกป้องบ้านและธุรกิจของคุณวันนี้
             </h2>
             <p className="text-base leading-relaxed opacity-95">
-              Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua,
-              ut enim ad minim veniam quis nostrud exercitation ullamco laboris.
+              ติดตั้งฟรีในเขต กทม. เมื่อซื้อครบ ฿2,000 รับประกันศูนย์ไทย 2 ปี
+              และใช้ AI วางกล้องให้แม่นยำก่อนตัดสินใจซื้อ
             </p>
           </div>
           <Button

@@ -18,6 +18,19 @@ export function ProductCard({ product }: { product: DecoratedProduct }) {
       className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-[0_6px_20px_rgba(14,27,42,.06)] transition-all duration-200 hover:-translate-y-1 hover:border-brand-teal hover:shadow-[0_18px_40px_rgba(14,27,42,.14)]"
     >
       <div className="sv-hatch relative flex aspect-square items-center justify-center">
+        {product.discount > 0 && (
+          <Badge className="absolute left-2.5 top-2.5 z-10 border-transparent bg-destructive text-white shadow-[0_2px_8px_rgba(14,27,42,.18)]">
+            -{product.discount}%
+          </Badge>
+        )}
+        {product.ai && (
+          <Badge
+            variant="teal"
+            className="absolute right-2.5 top-2.5 z-10 shadow-[0_2px_8px_rgba(14,27,42,.18)]"
+          >
+            AI
+          </Badge>
+        )}
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}
@@ -48,8 +61,15 @@ export function ProductCard({ product }: { product: DecoratedProduct }) {
           ))}
         </div>
         <div className="mt-auto flex items-center justify-between gap-2">
-          <div className="text-[19px] font-bold text-ink">
-            {product.priceLabel}
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[19px] font-bold text-ink">
+              {product.priceLabel}
+            </span>
+            {product.discount > 0 && (
+              <span className="text-[13px] font-medium text-muted-foreground line-through">
+                {product.oldPriceLabel}
+              </span>
+            )}
           </div>
           <button
             onClick={(e) => {

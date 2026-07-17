@@ -22,7 +22,7 @@ import {
 } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
-const RESOLUTIONS = ["4MP", "5MP", "8MP"];
+const PER_PAGE = 6;
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 6000;
@@ -43,8 +43,11 @@ export function ListingView({
     PRICE_MIN,
     PRICE_MAX,
   ]);
+  const [page, setPage] = React.useState(1);
 
   React.useEffect(() => setFilter(initialFilter), [initialFilter]);
+  // Any change to the result set sends the user back to the first page.
+  React.useEffect(() => setPage(1), [filter, sort, price]);
 
   const meta = CATEGORY_META[filter] ?? CATEGORY_META.all;
 
@@ -57,6 +60,13 @@ export function ListingView({
     );
     return sortProducts(base, sort);
   }, [filter, sort, price, initialProducts]);
+
+  const totalPages = Math.max(1, Math.ceil(products.length / PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pageProducts = products.slice(
+    (currentPage - 1) * PER_PAGE,
+    currentPage * PER_PAGE
+  );
 
   return (
     <div className="animate-sv-fade">
@@ -133,22 +143,8 @@ export function ListingView({
             <div className="mb-2.5 text-[13px] font-semibold text-muted-foreground">
               ช่วงราคา
             </div>
-            <div className="mb-5">
+            <div>
               <PriceRange value={price} onChange={setPrice} />
-            </div>
-
-            <div className="mb-2.5 text-[13px] font-semibold text-muted-foreground">
-              ความละเอียด
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {RESOLUTIONS.map((r) => (
-                <span
-                  key={r}
-                  className="rounded-[9px] border-[1.5px] border-line px-3 py-1.5 text-[13px] text-muted-foreground"
-                >
-                  {r}
-                </span>
-              ))}
             </div>
           </aside>
 
@@ -180,18 +176,39 @@ export function ListingView({
             </div>
 
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-              {products.map((p) => (
+              {pageProducts.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
             </div>
 
-            <div className="mt-9 flex justify-center gap-2">
-              <PageButton>‹</PageButton>
-              <PageButton active>1</PageButton>
-              <PageButton>2</PageButton>
-              <PageButton>3</PageButton>
-              <PageButton>›</PageButton>
-            </div>
+            {totalPages > 1 && (
+              <div className="mt-9 flex justify-center gap-2">
+                <PageButton
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  label="หน้าก่อนหน้า"
+                >
+                  ‹
+                </PageButton>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                  <PageButton
+                    key={n}
+                    active={n === currentPage}
+                    onClick={() => setPage(n)}
+                    label={`หน้า ${n}`}
+                  >
+                    {n}
+                  </PageButton>
+                ))}
+                <PageButton
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  label="หน้าถัดไป"
+                >
+                  ›
+                </PageButton>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -315,14 +332,25 @@ function PriceRange({
 function PageButton({
   children,
   active,
+  onClick,
+  disabled,
+  label,
 }: {
   children: React.ReactNode;
   active?: boolean;
+  onClick?: () => void;
+  disabled?: boolean;
+  label?: string;
 }) {
   return (
     <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "flex size-10 items-center justify-center rounded-xl text-sm font-bold transition-colors",
+        "flex size-10 items-center justify-center rounded-xl text-sm font-bold transition-colors disabled:pointer-events-none disabled:opacity-40",
         active
           ? "bg-ink text-white"
           : "border-[1.5px] border-line bg-white text-ink hover:border-brand-teal"
