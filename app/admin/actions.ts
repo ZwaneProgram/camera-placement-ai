@@ -1,11 +1,12 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { uploadProductImage, deleteProductImage } from "@/lib/blob";
+import { deleteProductImage } from "@/lib/blob";
 import { prisma } from "@/lib/prisma";
+import { PRODUCTS_TAG } from "@/lib/queries";
 import { PRODUCT_TYPES, type ProductType } from "@/lib/products";
 
 async function requireAdmin() {
@@ -46,7 +47,30 @@ function parseProductForm(formData: FormData): ParsedProduct | { error: string }
   return { name, en, type, brand, res, price, oldPrice, ai };
 }
 
+/**
+ * Parse the ordered image URL list from the form. Files are uploaded to Vercel
+ * Blob client-side (see app/api/blob-upload/route.ts), so by the time the form
+ * hits this Server Action the `images` field is just a JSON array of blob URLs
+ * in gallery order (index 0 = main image).
+ */
+function parseImageUrls(formData: FormData): string[] | { error: string } {
+  const raw = formData.get("images");
+  if (typeof raw !== "string" || raw === "") return [];
+  try {
+    const arr: unknown = JSON.parse(raw);
+    if (!Array.isArray(arr) || !arr.every((x) => typeof x === "string")) {
+      return { error: "ข้อมูลรูปภาพไม่ถูกต้อง" };
+    }
+    return arr as string[];
+  } catch {
+    return { error: "ข้อมูลรูปภาพไม่ถูกต้อง" };
+  }
+}
+
 function revalidateStorefront(id?: number) {
+  // Bust the cached catalogue queries (lib/queries.ts) so edits show at once.
+  // Next 16: revalidateTag needs a profile; `{ expire: 0 }` = immediate expiry.
+  revalidateTag(PRODUCTS_TAG, { expire: 0 });
   revalidatePath("/");
   revalidatePath("/products");
   if (id) revalidatePath(`/products/${id}`);
@@ -60,21 +84,11 @@ export async function createProduct(
   const parsed = parseProductForm(formData);
   if ("error" in parsed) return parsed;
 
-  const files = formData
-    .getAll("images")
-    .filter((f): f is File => f instanceof File && f.size > 0);
+  const urls = parseImageUrls(formData);
+  if (!Array.isArray(urls)) return { error: urls.error };
 
-  let urls: string[] = [];
-  if (files.length > 0) {
-    try {
-      urls = await Promise.all(files.map(uploadProductImage));
-    } catch {
-      return { error: "อัปโหลดรูปภาพไม่สำเร็จ" };
-    }
-  }
-  const imageUrl = urls[0] ?? null;
   const created = await prisma.product.create({
-    data: { ...parsed, imageUrl, images: urls },
+    data: { ...parsed, imageUrl: urls[0] ?? null, images: urls },
   });
   revalidateStorefront(created.id);
   redirect("/admin");
@@ -91,36 +105,22 @@ export async function updateProduct(
   const existing = await prisma.product.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบสินค้า" };
 
-  const newFiles = formData
-    .getAll("images")
-    .filter((f): f is File => f instanceof File && f.size > 0);
+  const urls = parseImageUrls(formData);
+  if (!Array.isArray(urls)) return { error: urls.error };
 
-  let images: string[] = existing.images;
-  let imageUrl: string | null = existing.imageUrl;
-
-  if (newFiles.length > 0) {
-    let urls: string[];
-    try {
-      urls = await Promise.all(newFiles.map(uploadProductImage));
-    } catch {
-      return { error: "อัปโหลดรูปภาพไม่สำเร็จ" };
-    }
-    // Delete all old blobs that are not in the new set
-    const newSet = new Set(urls);
-    const toDelete = new Set([
-      ...existing.images,
-      ...(existing.imageUrl ? [existing.imageUrl] : []),
-    ]);
-    for (const url of toDelete) {
-      if (!newSet.has(url)) await deleteProductImage(url);
-    }
-    images = urls;
-    imageUrl = urls[0] ?? null;
+  // Delete blobs that were removed from the gallery.
+  const kept = new Set(urls);
+  const oldAll = new Set([
+    ...existing.images,
+    ...(existing.imageUrl ? [existing.imageUrl] : []),
+  ]);
+  for (const url of oldAll) {
+    if (!kept.has(url)) await deleteProductImage(url);
   }
 
   await prisma.product.update({
     where: { id },
-    data: { ...parsed, imageUrl, images },
+    data: { ...parsed, imageUrl: urls[0] ?? null, images: urls },
   });
   revalidateStorefront(id);
   redirect("/admin");

@@ -70,14 +70,16 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
           </div>
 
           {gallery.length > 1 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {gallery.map((url, i) => (
                 <button
                   key={url + i}
                   onClick={() => setActive(url)}
                   className={cn(
-                    "relative size-16 shrink-0 overflow-hidden rounded-xl border-2",
-                    active === url ? "border-brand-teal" : "border-line"
+                    "relative size-20 shrink-0 overflow-hidden rounded-xl border-2 transition-all sm:size-24",
+                    active === url
+                      ? "border-brand-teal ring-2 ring-brand-teal/25"
+                      : "border-line hover:border-brand-teal/50"
                   )}
                   aria-label={`ภาพที่ ${i + 1}`}
                 >
@@ -85,7 +87,7 @@ export function ProductDetail({ product }: { product: DecoratedProduct }) {
                     src={url}
                     alt={`${product.name} ${i + 1}`}
                     fill
-                    sizes="64px"
+                    sizes="96px"
                     className="object-cover"
                   />
                 </button>
